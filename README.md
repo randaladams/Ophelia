@@ -9,6 +9,7 @@ A one-deck solitaire card game, as taught by Grandma.
 - If the card makes 13 with, or matches, the top or bottom card of the line, both go to the pile.
 - Otherwise the card is laid at the bottom of the line. Cards are never laid at the top.
 - Whenever the top and bottom cards, or the two cards side by side at either end, make 13 or a pair, they go to the pile too. This can chain.
+- You may also add three or more cards to make 13: your card plus cards taken off the top and bottom ends of the line, with no gaps. It's optional, and it leaves other cards without partners, so it usually makes winning harder.
 - You win if the line is empty when the deck runs out.
 
 The phone buzzes and the cards glow when a match is waiting. The game plays in landscape.

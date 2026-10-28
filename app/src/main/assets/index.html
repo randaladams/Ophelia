@@ -38,8 +38,8 @@ body {
 .title { display: flex; align-items: center; justify-content: space-between; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; color: var(--brass); }
 .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--brass); background: transparent; color: var(--brass); font: 700 1.05rem var(--body); }
-.stats { display: flex; gap: 8px; }
-.stat { background: var(--felt-2); border-radius: 10px; padding: 4px 12px; display: flex; align-items: baseline; gap: 6px; }
+.stats { display: flex; gap: 6px; flex: none; }
+.stat { background: var(--felt-2); border-radius: 10px; padding: 3px 8px; display: flex; align-items: baseline; gap: 6px; }
 .stat b { font-family: var(--display); font-size: 1.15rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat span { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .hand { flex: 1; min-height: 0; display: flex; gap: 12px; align-items: center; }
@@ -58,10 +58,13 @@ body {
 .btn:active:not(:disabled) { transform: translateY(1px); }
 
 .table { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.tablehead { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 4px 8px; }
-.tablehead h2 { margin: 0; font-family: var(--display); font-size: 1.15rem; }
+.tablehead { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; padding: 0 4px 8px; }
+.tablehead h2 { white-space: nowrap; margin: 0; font-family: var(--display); font-size: 1.15rem; }
 #lineCount { color: var(--muted); font: 400 .9rem var(--body); margin-left: 8px; font-variant-numeric: tabular-nums; }
 .line { flex: 1; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
+.line.all { justify-content: flex-start; overflow-x: auto; gap: 1.4vw; }
+.line.all .card { --h: min(38vh, 10.5vw); }
+.pill { flex: none; white-space: nowrap; touch-action: manipulation; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; margin-right: auto; }
 .line .empty { color: var(--muted); font-size: 1rem; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .tag { height: 1em; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); }
@@ -130,6 +133,7 @@ body {
 <section class="table">
   <div class="tablehead">
     <h2>The line <span id="lineCount">0 cards</span></h2>
+    <button class="pill" id="midBtn" type="button" hidden>Show all</button>
     <div class="stats">
       <div class="stat"><b id="deckCount">52</b><span>Deck</span></div>
       <div class="stat"><b id="pileCount">0</b><span>Pile</span></div>
@@ -148,6 +152,8 @@ body {
       <li>If your card makes 13 with, or matches, the top or bottom card of the line, tap both to clear them.</li>
       <li>If it fits nowhere, tap Lay down. It goes at the bottom of the line.</li>
       <li>The top and bottom cards together, or the two cards side by side at either end, also clear when they make 13 or a pair.</li>
+      <li>You may also add up three or more cards to make 13: your card and cards taken off the top and bottom ends of the line, with no gaps. Tap them one at a time. It's allowed, but it leaves other cards without partners, so use it with care.</li>
+      <li>Tap the stack in the middle to see every card in the line.</li>
       <li>The phone buzzes and the cards glow when a match is waiting.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
@@ -171,7 +177,7 @@ const SUITS = [["♠︎", false, "spades"], ["♥︎", true, "hearts"], ["♦︎
 const NAMES = {1:"A",11:"J",12:"Q",13:"K"};
 const FULL = {1:"Ace",11:"Jack",12:"Queen",13:"King"};
 const $ = id => document.getElementById(id);
-let deck, line, pile, hand, sel, over, result, flipNext, hist = [], glow = new Set(), alertDue = false;
+let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], glow = new Set(), alertDue = false;
 
 let rec = { w: 0, g: 0 };
 try { const s = JSON.parse(localStorage.getItem("ophelia-record")); if (s) rec = s; } catch (e) {}
@@ -193,7 +199,7 @@ function newGame() {
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-  line = []; pile = 0; hand = null; sel = null; over = false; result = null; flipNext = false; hist = []; glow.clear();
+  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; glow.clear();
   $("endScreen").hidden = true;
   draw("");
   render();
@@ -205,7 +211,7 @@ function undo() {
   if (over) { rec.g--; if (result === "win") rec.w--; saveRec(); }
   const s = JSON.parse(hist.pop());
   deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result;
-  sel = null; glow.clear(); alertDue = false;
+  sel = []; glow.clear(); alertDue = false;
   $("endScreen").hidden = true;
   say("Took back your last move.");
   render();
@@ -233,7 +239,7 @@ function runAlert() {
 function checkEnd() {
   if (over || deck.length || hand) return;
   const n = line.length;
-  const movesLeft = n >= 2 && (match(line[0], line[n - 1]) || match(line[0], line[1]) || match(line[n - 2], line[n - 1]));
+  const movesLeft = lineHasMove();
   if (n === 0) { over = true; result = "win"; rec.w++; rec.g++; saveRec(); say("The line is clear. You won!", "win"); showEnd(); }
   else if (!movesLeft) { over = true; result = "lose"; rec.g++; saveRec(); say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose"); showEnd(); }
 }
@@ -248,7 +254,7 @@ function showEnd() {
 
 function draw(prefix) {
   if (over || hand || !deck.length) return;
-  hand = deck.pop(); sel = null; flipNext = true; alertDue = true;
+  hand = deck.pop(); sel = []; flipNext = true; alertDue = true;
   say(prefix + (hand.rank === 13 ? "You drew a King. Tap it to send it to the pile." : `You drew ${article(hand)} ${nm(hand)}.`));
 }
 function nextCard(prefix) {
@@ -260,19 +266,41 @@ function lay() {
   glow.clear(); snap();
   line.push(hand);
   const laid = nm(hand);
-  hand = null; sel = null;
+  hand = null; sel = [];
   nextCard(`${laid} laid at the bottom. `);
   render();
 }
 
 function cardOf(k) { return k === "hand" ? hand : line[k]; }
-function tappable(i) { const n = line.length; return i <= 1 || i >= n - 2; }
-function legalPlace(a, b) {
+function tappable(i) { const n = line.length; return expanded || i <= 1 || i >= n - 2; }
+const isSel = k => sel.includes(k);
+
+// Cards from the line must come off the ends: a run from the top and/or a run from the bottom, no gaps.
+function fromEnds(idxs) {
+  const S = new Set(idxs), n = line.length;
+  let k = 0; while (S.has(k)) k++;
+  let j = 0; while (n - 1 - j >= k && S.has(n - 1 - j)) j++;
+  return k + j === S.size;
+}
+
+// Any group at the ends of the line that can still be cleared once the deck is out.
+function lineHasMove() {
   const n = line.length;
-  if (a === "hand" || b === "hand") { const i = a === "hand" ? b : a; return i === 0 || i === n - 1; }
-  const lo = Math.min(a, b), hi = Math.max(a, b);
-  if (lo === 0 && hi === n - 1) return true;
-  return hi - lo === 1 && (lo === 0 || hi === n - 1);
+  if (n < 2) return false;
+  if (line[0].rank === line[n - 1].rank) return true;
+  if (n >= 3 && (line[0].rank === line[1].rank || line[n - 2].rank === line[n - 1].rank)) return true;
+  let top = 0;
+  for (let k = 0; k <= n; k++) {
+    if (k > 0) top += line[k - 1].rank;
+    if (top > 13) break;
+    let bot = 0;
+    for (let j = 0; k + j <= n; j++) {
+      if (j > 0) bot += line[n - j].rank;
+      if (top + bot > 13) break;
+      if (top + bot === 13 && k + j >= 2) return true;
+    }
+  }
+  return false;
 }
 
 function tap(k, el) {
@@ -280,34 +308,41 @@ function tap(k, el) {
   glow.clear();
   const c = cardOf(k);
   if (k === "hand" && c.rank === 13) {
-    snap(); pile++; hand = null; sel = null;
+    snap(); pile++; hand = null; sel = [];
     nextCard("King to the pile. "); render(); return;
   }
-  if (sel === null) { sel = k; render(); return; }
-  if (sel === k) { sel = null; render(); return; }
-  const a = cardOf(sel), b = c;
-  if (!legalPlace(sel, k)) {
-    const handInvolved = sel === "hand" || k === "hand";
-    sel = null;
-    say(handInvolved ? "Your card can only go with the top or bottom card." : "Those two aren't side by side at an end of the line.", "nope");
-    render(); return;
-  }
-  if (match(a, b)) {
+  sel = isSel(k) ? sel.filter(x => x !== k) : [...sel, k];
+  if (!sel.length) { say("Nothing picked."); render(); return; }
+  const cards = sel.map(cardOf);
+  const total = cards.reduce((t, x) => t + x.rank, 0);
+  const names = cards.map(nm).join(" + ");
+  const isPair = cards.length === 2 && cards[0].rank === cards[1].rank;
+
+  if (isPair || (total === 13 && cards.length >= 2)) {
+    const idxs = sel.filter(x => x !== "hand");
+    const usedHand = sel.includes("hand");
+    if (!fromEnds(idxs)) {
+      sel = [];
+      say("Cards from the line have to come off the ends, with no gaps.", "nope");
+      render(); return;
+    }
     snap();
-    const why = a.rank === b.rank ? "a pair" : "13";
-    const usedHand = sel === "hand" || k === "hand";
-    [sel, k].filter(x => x !== "hand").sort((x, y) => y - x).forEach(i => line.splice(i, 1));
+    idxs.sort((x, y) => y - x).forEach(i => line.splice(i, 1));
     if (usedHand) hand = null;
-    pile += 2; sel = null; alertDue = true;
-    const done = `${nm(a)} and ${nm(b)} make ${why}. To the pile. `;
+    pile += cards.length; sel = []; alertDue = true;
+    if (line.length <= 4) expanded = false;
+    const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
     if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(); }
     render();
-  } else {
-    sel = null;
-    say(`${nm(a)} and ${nm(b)} make ${a.rank + b.rank}, not 13.`, "nope");
+  } else if (total > 13) {
+    sel = [];
+    say(`${names} make ${total}, over 13.`, "nope");
     render();
     const again = k === "hand" ? $("handSlot").firstChild : el;
     if (again) again.classList.add("shake");
+  } else {
+    say(cards.length === 1 ? `${nm(c)} picked. Tap more cards to make 13, or a matching card for a pair.` : `${names} = ${total}. Add ${13 - total} more to make 13.`);
+    render();
   }
 }
 
@@ -332,20 +367,24 @@ function render() {
   $("record").textContent = `${rec.w}/${rec.g}`;
 
   const hs = $("handSlot"); hs.innerHTML = "";
-  if (hand) hs.appendChild(cardEl(hand, "small live" + (sel === "hand" ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : ""), "hand"));
+  if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : ""), "hand"));
   else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
   flipNext = false;
 
   const L = $("line"); L.innerHTML = "";
-  const n = line.length, hidden = n > 4 ? n - 4 : 0;
+  const n = line.length, hidden = n > 4 && !expanded ? n - 4 : 0;
+  L.classList.toggle("all", expanded && n > 4);
+  $("midBtn").hidden = n <= 4;
+  $("midBtn").textContent = expanded ? "Hide middle" : "Show all";
   if (!n) { const e = document.createElement("span"); e.className = "empty"; e.textContent = "No cards in the line yet."; L.appendChild(e); }
   line.forEach((c, i) => {
     if (hidden && i >= 2 && i <= n - 3) {
       if (i === 2) {
         const s = document.createElement("div"); s.className = "slot";
         const t = document.createElement("span"); t.className = "tag"; s.appendChild(t);
-        const st = document.createElement("div"); st.className = "card back stack";
-        st.innerHTML = `<span>${hidden}<small>in the middle</small></span>`;
+        const st = document.createElement("button"); st.type = "button"; st.className = "card back stack";
+        st.innerHTML = `<span>${hidden}<small>tap to show</small></span>`;
+        st.addEventListener("click", () => { expanded = true; render(); });
         s.appendChild(st); L.appendChild(s);
       }
       return;
@@ -355,7 +394,7 @@ function render() {
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
     s.appendChild(t);
-    if (tappable(i)) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (sel === i ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
+    if (tappable(i)) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
     else s.appendChild(cardEl(c, "dim"));
     L.appendChild(s);
   });
@@ -366,6 +405,7 @@ function render() {
 }
 
 $("layBtn").addEventListener("click", lay);
+$("midBtn").addEventListener("click", () => { expanded = !expanded; render(); });
 $("undoBtn").addEventListener("click", undo);
 $("newBtn").addEventListener("click", newGame);
 $("endNew").addEventListener("click", newGame);
