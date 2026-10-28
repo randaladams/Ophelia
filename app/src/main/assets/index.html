@@ -75,11 +75,11 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,.35); flex: none;
 }
 .card.red { color: var(--red); }
-.card .c1, .card .c2 { position: absolute; display: flex; flex-direction: column; align-items: center; line-height: .95; font-size: calc(var(--h) * .15); }
+/* The value is the big mark in the middle; the suit sits in the corners. */
+.card .c1, .card .c2 { position: absolute; line-height: 1; font-size: calc(var(--h) * .17); }
 .card .c1 { top: 6%; left: 8%; }
 .card .c2 { bottom: 6%; right: 8%; transform: rotate(180deg); }
-.card .c1 small, .card .c2 small { font-size: .8em; }
-.card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .36); }
+.card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .44); letter-spacing: -.04em; }
 .card.small { --h: min(34vh, 11vw); }
 .card.live { border-color: var(--brass); }
 .card.sel { border-color: var(--sel); box-shadow: 0 0 0 4px var(--sel); transform: translateY(-6px); }
@@ -318,7 +318,7 @@ function cardEl(c, cls, key) {
   d.className = "card " + cls + (c && c.red ? " red" : "");
   if (c) {
     const r = NAMES[c.rank] || c.rank;
-    d.innerHTML = `<span class="c1">${r}<small>${c.suit}</small></span><span class="mid">${c.suit}</span><span class="c2">${r}<small>${c.suit}</small></span>`;
+    d.innerHTML = `<span class="c1">${c.suit}</span><span class="mid">${r}</span><span class="c2">${c.suit}</span>`;
     d.setAttribute("aria-label", `${nm(c)} of ${c.name}`);
   }
   if (key !== undefined) d.addEventListener("click", () => tap(key, d));

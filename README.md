@@ -15,7 +15,11 @@ The phone buzzes and the cards glow when a match is waiting. The game plays in l
 
 ## Getting the app
 
-Every push to `main` builds the app on GitHub. Open the **Releases** page of this repository, pick the newest "Ophelia build", and download `Ophelia.apk` on your Android phone. Android will ask you to allow installing apps from your browser or file manager the first time.
+Every push to `main` builds the app on GitHub. This link always downloads the newest build:
+
+**https://github.com/randaladams/Ophelia/releases/latest/download/Ophelia.apk**
+
+Open it on your Android phone, then open the downloaded file to install. Android will ask you to allow installing apps from your browser or file manager the first time.
 
 ## Project layout
 
