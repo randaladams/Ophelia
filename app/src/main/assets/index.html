@@ -105,6 +105,9 @@ body {
 
 .overlay { position: fixed; inset: 0; background: rgba(5,14,10,.82); display: grid; place-items: center; padding: 16px; z-index: 5; }
 .panel { background: var(--rail); border: 2px solid var(--brass); border-radius: 18px; padding: 18px 22px; max-width: 640px; max-height: 92vh; overflow: auto; }
+.panelhead { position: sticky; top: -18px; margin: -18px -22px 10px; padding: 14px 22px 10px; background: var(--rail); display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #2f5a44; }
+.panelhead h3 { margin: 0 !important; }
+.btn.back { flex: none; padding: 10px 18px; min-width: 0; }
 .panel h3 { margin: 0 0 8px; font-family: var(--display); color: var(--brass); font-size: 1.4rem; }
 .panel ul { margin: 0 0 14px; padding-left: 20px; line-height: 1.45; }
 .panel p { margin: 0 0 14px; font-size: 1.05rem; }
@@ -145,7 +148,10 @@ body {
 
 <div class="overlay" id="help" hidden>
   <div class="panel">
-    <h3>How to play Ophelia</h3>
+    <div class="panelhead">
+      <h3>How to play Ophelia</h3>
+      <button class="btn primary back" id="helpBack" type="button">← Back</button>
+    </div>
     <ul>
       <li>Ace 1, number cards face value, Jack 11, Queen 12, King 13.</li>
       <li>A new card turns over by itself. A King is 13 alone: tap it to send it to the pile.</li>
@@ -412,6 +418,14 @@ $("endNew").addEventListener("click", newGame);
 $("endLook").addEventListener("click", () => { $("endScreen").hidden = true; });
 $("helpBtn").addEventListener("click", () => { $("help").hidden = false; });
 $("helpClose").addEventListener("click", () => { $("help").hidden = true; });
+$("helpBack").addEventListener("click", () => { $("help").hidden = true; });
+$("help").addEventListener("click", e => { if (e.target === $("help")) $("help").hidden = true; });
+// Called by the phone's Back button. Returns true when it closed something.
+window.handleBack = () => {
+  if (!$("help").hidden) { $("help").hidden = true; return true; }
+  if (!$("endScreen").hidden) { $("endScreen").hidden = true; return true; }
+  return false;
+};
 newGame();
 </script>
 </body>

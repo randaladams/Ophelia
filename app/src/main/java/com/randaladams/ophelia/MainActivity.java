@@ -49,6 +49,15 @@ public class MainActivity extends Activity {
         webView.saveState(outState);
     }
 
+    /** The phone's Back button closes the rules or results screen first; otherwise it leaves the app. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        webView.evaluateJavascript("window.handleBack ? window.handleBack() : false", value -> {
+            if (!"true".equals(value)) MainActivity.super.onBackPressed();
+        });
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
