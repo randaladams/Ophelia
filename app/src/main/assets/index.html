@@ -250,8 +250,12 @@ const match = (a, b) => a.rank === b.rank || a.rank + b.rank === 13;
 const say = (t, cls = "") => { $("msg").textContent = t; $("msg").className = cls; };
 
 // A tap counts as soon as the finger lifts, however long it was held, as long as it didn't slide far.
+// After a touch, the browser also sends a "click". The game redraws the cards on every tap, so that
+// click lands on the freshly drawn card under the finger and would undo the tap. Any click soon after
+// a touch is therefore ignored everywhere, not just on the element that was touched.
+let lastTouchTap = 0;
 function onTap(el, fn) {
-  let start = null, tapAt = 0;
+  let start = null;
   el.addEventListener("pointerdown", e => {
     start = { id: e.pointerId, x: e.clientX, y: e.clientY };
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
@@ -261,12 +265,12 @@ function onTap(el, fn) {
     const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
     start = null;
     if (moved > 40 || el.disabled) return;
-    tapAt = Date.now();
+    lastTouchTap = Date.now();
     fn(e);
   });
   el.addEventListener("pointercancel", () => { start = null; });
   // Keyboards and accessibility tools still send plain clicks.
-  el.addEventListener("click", e => { if (Date.now() - tapAt > 700 && !el.disabled) fn(e); });
+  el.addEventListener("click", e => { if (Date.now() - lastTouchTap > 800 && !el.disabled) fn(e); });
 }
 document.addEventListener("contextmenu", e => e.preventDefault());
 
