@@ -30,7 +30,7 @@
 html, body { margin: 0; height: 100%; background: var(--felt); color: var(--ink); font-family: var(--body); overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 /* Taps on game controls are handled from touch down to touch up, so the browser never turns them into a scroll or long-press. */
 .btn, .card, .icon-btn, .pill { touch-action: none; -webkit-touch-callout: none; }
-.line.all .card { touch-action: pan-x; }
+.line { touch-action: none; }
 body {
   display: grid; grid-template-columns: minmax(230px, 32%) 1fr;
   /* Wide margins keep buttons clear of the edge-swipe gestures for Back and the system bars. */
@@ -81,8 +81,10 @@ body {
 .linewrap { position: relative; flex: 1; min-height: 0; display: flex; }
 .count { position: absolute; left: 14px; bottom: 10px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; pointer-events: none; }
 .line { flex: 1; min-width: 0; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
-.line.all { justify-content: flex-start; overflow-x: auto; gap: 1.4vw; }
-.line.all .card { --h: min(38vh, 10.5vw); }
+/* Show all: every card is shrunk to fit and wrapped onto rows, so nothing ever scrolls under your finger. */
+.line.all { flex-wrap: wrap; align-content: center; gap: 6px 8px; padding: 50px 10px 30px; }
+.line.all .card { --h: var(--fit, 80px); }
+.line.all .slot { gap: 2px; }
 .pill { position: absolute; top: 10px; right: 10px; white-space: nowrap; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; }
 .line .empty { color: var(--muted); font-size: 1rem; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -104,7 +106,7 @@ body {
 .card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .44); letter-spacing: -.04em; }
 .card.small { --h: min(34vh, 11vw); }
 .card.live { border-color: var(--brass); }
-.card.sel { border-color: var(--sel); box-shadow: 0 0 0 4px var(--sel); transform: translateY(-6px); }
+.card.sel { border-color: var(--sel); box-shadow: 0 0 0 5px var(--sel); }
 .card.glow { box-shadow: 0 0 0 4px var(--good); }
 .card.cglow { box-shadow: 0 0 0 4px var(--sel); }
 .card.dim { opacity: .55; }
@@ -114,7 +116,6 @@ body {
 .card.stack span { background: var(--brass); color: var(--brass-ink); border-radius: 8px; padding: 4px 8px; font-size: calc(var(--h) * .17); text-align: center; line-height: 1; }
 .card.stack span small { display: block; font: 700 .42em var(--body); margin-top: 3px; }
 @media (prefers-reduced-motion: no-preference) {
-  .card { transition: transform .12s, box-shadow .12s; }
   .flip { animation: flip .3s ease-out; }
   @keyframes flip { from { transform: translateY(-8px); opacity: .3; } to { transform: none; opacity: 1; } }
   .glow { animation: glow 1s ease-in-out 3; }
@@ -480,6 +481,21 @@ function tap(k, el) {
   }
 }
 
+// Largest card size that lets all n cards fit the line box without scrolling.
+function fitAll(L, n) {
+  const cs = getComputedStyle(L);
+  const W = L.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const H = L.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const gapX = 8, gapY = 6, tag = 16;
+  let h = Math.min(H - tag, 160);
+  for (; h > 30; h -= 2) {
+    const perRow = Math.max(1, Math.floor((W + gapX) / (h * 0.7 + gapX)));
+    const rows = Math.ceil(n / perRow);
+    if (rows * (h + tag) + (rows - 1) * gapY <= H) break;
+  }
+  L.style.setProperty("--fit", h + "px");
+}
+
 function cardEl(c, cls, key) {
   const tag = key !== undefined ? "button" : "div";
   const d = document.createElement(tag);
@@ -532,6 +548,7 @@ function render() {
     else s.appendChild(cardEl(c, "dim"));
     L.appendChild(s);
   });
+  if (expanded && n > 4) fitAll(L, n);
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
   $("layBtn").disabled = !hand || hand.rank === 13 || over;
