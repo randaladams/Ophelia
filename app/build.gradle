@@ -10,8 +10,8 @@ android {
         applicationId 'com.randaladams.ophelia'
         minSdk 26
         targetSdk 34
-        versionCode 12
-        versionName '1.11'
+        versionCode 13
+        versionName '1.12'
     }
 
     // One fixed key, so each new build installs over the last one and keeps the win record.

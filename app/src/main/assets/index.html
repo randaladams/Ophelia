@@ -264,7 +264,10 @@ function onTap(el, fn) {
     if (!start || e.pointerId !== start.id) return;
     const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
     start = null;
-    if (moved > 40 || el.disabled) return;
+    // Like a real button: lifting the finger anywhere on the element counts, even after a roll or slide.
+    const r = el.getBoundingClientRect(), pad = 16;
+    const inside = e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+    if ((!inside && moved > 40) || el.disabled) return;
     lastTouchTap = Date.now();
     fn(e);
   });
