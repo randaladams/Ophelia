@@ -37,6 +37,17 @@ body {
 .rail { background: var(--rail); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .title { display: flex; align-items: center; justify-content: space-between; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; color: var(--brass); }
+.titlebtns { display: flex; gap: 8px; }
+.toggle { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #2f5a44; cursor: pointer; line-height: 1.4; max-width: 560px; }
+.toggle:last-child { border-bottom: 0; }
+.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.toggle b { display: block; font-size: 1.05rem; margin-bottom: 2px; color: var(--ink); }
+.toggle span:last-child { color: var(--muted); }
+.sw { flex: none; width: 50px; height: 28px; border-radius: 999px; background: #2f5a44; position: relative; transition: background .15s; margin-top: 2px; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); transition: transform .15s; }
+.toggle input:checked + .sw { background: var(--brass); }
+.toggle input:checked + .sw::after { transform: translateX(22px); }
+.toggle input:focus-visible + .sw { outline: 3px solid var(--sel); outline-offset: 2px; }
 .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--brass); background: transparent; color: var(--brass); font: 700 1.05rem var(--body); }
 .stats { display: flex; gap: 6px; flex: 0 1 auto; min-width: 0; }
 .stat { white-space: nowrap; background: var(--felt-2); border-radius: 10px; padding: 3px 8px; display: flex; align-items: baseline; gap: 6px; }
@@ -128,7 +139,10 @@ body {
 <section class="rail">
   <div class="title">
     <h1>Ophelia</h1>
-    <button class="icon-btn" id="helpBtn" type="button" aria-label="How to play">?</button>
+    <div class="titlebtns">
+      <button class="icon-btn" id="setBtn" type="button" aria-label="Settings">⚙&#xFE0E;</button>
+      <button class="icon-btn" id="helpBtn" type="button" aria-label="How to play">?</button>
+    </div>
   </div>
   <div class="actions" id="actions">
     <button id="layBtn" class="btn primary big" type="button">Lay down</button>
@@ -159,6 +173,25 @@ body {
   </div>
 </section>
 
+<div class="overlay" id="settings" hidden>
+  <div class="panel">
+    <div class="panelhead">
+      <h3>Settings</h3>
+      <button class="btn primary back" id="setBack" type="button">← Back</button>
+    </div>
+    <label class="toggle" for="optReal">
+      <input type="checkbox" id="optReal">
+      <span class="sw" aria-hidden="true"></span>
+      <span><b>Real deck</b>No buzzes, no glows and no adding up for you. Spot every match yourself, just like at the kitchen table.</span>
+    </label>
+    <label class="toggle" for="optClassic">
+      <input type="checkbox" id="optClassic">
+      <span class="sw" aria-hidden="true"></span>
+      <span><b>Classic rules</b>Only pairs and two-card 13s. No 13s made from three or more cards.</span>
+    </label>
+  </div>
+</div>
+
 <div class="overlay" id="help" hidden>
   <div class="panel">
     <div class="panelhead">
@@ -175,6 +208,7 @@ body {
       <li>Tap the stack in the middle to see every card in the line.</li>
       <li>When a match is waiting, the phone buzzes twice and the cards glow green.</li>
       <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz and the cards glow blue. Taking it is your choice.</li>
+      <li>Tap ⚙ for Real deck (no alerts) and Classic rules (no three-card 13s).</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -197,6 +231,9 @@ const SUITS = [["♠︎", false, "spades"], ["♥︎", true, "hearts"], ["♦︎
 const NAMES = {1:"A",11:"J",12:"Q",13:"K"};
 const FULL = {1:"Ace",11:"Jack",12:"Queen",13:"King"};
 const $ = id => document.getElementById(id);
+let opts = { real: false, classic: false };
+try { Object.assign(opts, JSON.parse(localStorage.getItem("ophelia-settings")) || {}); } catch (e) {}
+function saveOpts() { try { localStorage.setItem("ophelia-settings", JSON.stringify(opts)); } catch (e) {} }
 let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], glow = new Set(), cglow = new Set(), alertDue = false;
 
 let rec = { w: 0, g: 0 };
@@ -257,10 +294,12 @@ function availableMatches() {
 function runAlert() {
   if (!alertDue) return;
   alertDue = false;
+  glow = new Set(); cglow = new Set();
+  if (opts.real) return;
   const m = availableMatches();
   glow = new Set(m.flat());
-  cglow = new Set();
   if (m.length) { buzz(); return; }
+  if (opts.classic) return;
   const combo = bestCombo();
   if (combo) { cglow = new Set(combo); buzzLong(); }
 }
@@ -376,7 +415,7 @@ function lineHasMove() {
     for (let j = 0; k + j <= n; j++) {
       if (j > 0) bot += line[n - j].rank;
       if (top + bot > 13) break;
-      if (top + bot === 13 && k + j >= 2) return true;
+      if (top + bot === 13 && k + j >= 2 && !(opts.classic && k + j > 2)) return true;
     }
   }
   return false;
@@ -403,14 +442,16 @@ function tap(k, el) {
       render(); return;
     }
     clearGroup([...sel]);
-  } else if (total > 13) {
+  } else if (total > 13 || (opts.classic && cards.length >= 2)) {
     sel = [];
-    say(`${names} make ${total}, over 13.`, "nope");
+    say(opts.real ? `${names} don't match.` : `${names} make ${total}, not 13.`, "nope");
     render();
     const again = k === "hand" ? $("handSlot").firstChild : el;
     if (again) again.classList.add("shake");
   } else {
-    say(cards.length === 1 ? `${nm(c)} picked. Tap more cards to make 13, or a matching card for a pair.` : `${names} = ${total}. Add ${13 - total} more to make 13.`);
+    if (opts.real) say(`${names} picked.`);
+    else if (cards.length === 1) say(opts.classic ? `${nm(c)} picked. Tap a card that makes 13 or matches it.` : `${nm(c)} picked. Tap more cards to make 13, or a matching card for a pair.`);
+    else say(`${names} = ${total}. Add ${13 - total} more to make 13.`);
     render();
   }
 }
@@ -484,7 +525,15 @@ $("helpClose").addEventListener("click", () => { $("help").hidden = true; });
 $("helpBack").addEventListener("click", () => { $("help").hidden = true; });
 $("help").addEventListener("click", e => { if (e.target === $("help")) $("help").hidden = true; });
 // Called by the phone's Back button. Returns true when it closed something.
+$("optReal").checked = opts.real;
+$("optClassic").checked = opts.classic;
+$("optReal").addEventListener("change", e => { opts.real = e.target.checked; saveOpts(); alertDue = true; render(); });
+$("optClassic").addEventListener("change", e => { opts.classic = e.target.checked; saveOpts(); alertDue = true; render(); });
+$("setBtn").addEventListener("click", () => { $("settings").hidden = false; });
+$("setBack").addEventListener("click", () => { $("settings").hidden = true; });
+$("settings").addEventListener("click", e => { if (e.target === $("settings")) $("settings").hidden = true; });
 window.handleBack = () => {
+  if (!$("settings").hidden) { $("settings").hidden = true; return true; }
   if (!$("help").hidden) { $("help").hidden = true; return true; }
   if (!$("endScreen").hidden) { $("endScreen").hidden = true; return true; }
   return false;
