@@ -14,6 +14,8 @@ A one-deck solitaire card game, as taught by Grandma.
 
 When a match is waiting, the phone buzzes twice and the cards glow green. When only a 13 made from three or more cards is possible, the phone gives one long buzz and the cards glow blue. The game plays in landscape.
 
+When a game ends, the results screen lists any matches you missed along the way, and separately any optional 13s you passed up.
+
 The ⚙ button has two settings: **Real deck** turns off every buzz, glow and running total so you spot matches yourself, and **Classic rules** allows only pairs and two-card 13s.
 
 ## Getting the app

@@ -136,6 +136,13 @@ body {
 .panel p { margin: 0 0 14px; font-size: 1.05rem; }
 .panel .btn { min-width: 150px; padding: 11px 16px; }
 .panel .row { display: flex; gap: 10px; flex-wrap: wrap; }
+.review { margin-top: 16px; border-top: 1px solid #2f5a44; padding-top: 12px; }
+.review h4 { margin: 0 0 6px; font-family: var(--display); font-size: 1.1rem; color: var(--ink); }
+.review ol { margin: 0; padding-left: 22px; line-height: 1.45; color: var(--muted); }
+.review li { margin-bottom: 6px; }
+.review li b { color: var(--ink); }
+.review li.optional { color: #8fb0c8; }
+.review h4.opt { margin-top: 12px; font-size: 1rem; color: #8fb0c8; }
 </style>
 </head>
 <body>
@@ -227,6 +234,12 @@ body {
       <button class="btn primary" id="endNew" type="button">New game</button>
       <button class="btn" id="endLook" type="button">Look at the table</button>
     </div>
+    <div class="review">
+      <h4 id="reviewTitle"></h4>
+      <ol id="reviewList"></ol>
+      <h4 class="opt" id="optTitle">Optional 13s you passed up</h4>
+      <ol id="optList"></ol>
+    </div>
   </div>
 </div>
 
@@ -238,7 +251,7 @@ const $ = id => document.getElementById(id);
 let opts = { real: false, classic: false };
 try { Object.assign(opts, JSON.parse(localStorage.getItem("ophelia-settings")) || {}); } catch (e) {}
 function saveOpts() { try { localStorage.setItem("ophelia-settings", JSON.stringify(opts)); } catch (e) {} }
-let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], glow = new Set(), cglow = new Set(), alertDue = false;
+let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], misses = [], glow = new Set(), cglow = new Set(), alertDue = false;
 
 let rec = { w: 0, g: 0 };
 try { const s = JSON.parse(localStorage.getItem("ophelia-record")); if (s) rec = s; } catch (e) {}
@@ -294,18 +307,18 @@ function newGame() {
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; glow.clear(); cglow.clear();
+  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; misses = []; glow.clear(); cglow.clear();
   $("endScreen").hidden = true;
   draw("");
   render();
 }
 
-function snap() { hist.push(JSON.stringify({ deck, line, pile, hand, over, result })); }
+function snap() { hist.push(JSON.stringify({ deck, line, pile, hand, over, result, misses })); }
 function undo() {
   if (!hist.length) return;
   if (over) { rec.g--; if (result === "win") rec.w--; saveRec(); }
   const s = JSON.parse(hist.pop());
-  deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result;
+  deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result; misses = s.misses || [];
   sel = []; glow.clear(); cglow.clear(); alertDue = false;
   $("endScreen").hidden = true;
   say("Took back your last move.");
@@ -399,6 +412,16 @@ function showEnd() {
   $("endText").textContent = win
     ? `Every card made it to the pile. That's ${rec.w} win${rec.w === 1 ? "" : "s"} in ${rec.g} game${rec.g === 1 ? "" : "s"}.`
     : `${line.length} card${line.length === 1 ? " was" : "s were"} left in the line. You've won ${rec.w} of ${rec.g} games.`;
+  const real = misses.filter(x => x.kind === "miss"), optional = misses.filter(x => x.kind === "optional");
+  $("reviewTitle").textContent = real.length
+    ? `You missed ${real.length} match${real.length === 1 ? "" : "es"}`
+    : "You didn't miss a single match";
+  $("reviewList").innerHTML = real.map(x => `<li>${x.text}</li>`).join("");
+  $("reviewList").hidden = !real.length;
+  const shown = optional.slice(0, 5);
+  $("optList").innerHTML = shown.map(x => `<li class="optional">${x.text}</li>`).join("")
+    + (optional.length > shown.length ? `<li class="optional">…and ${optional.length - shown.length} more.</li>` : "");
+  $("optTitle").hidden = $("optList").hidden = !optional.length;
   setTimeout(() => { if (over) $("endScreen").hidden = false; }, 700);
 }
 
@@ -411,9 +434,37 @@ function nextCard(prefix) {
   if (deck.length) draw(prefix); else { say(prefix.trim(), "ok"); checkEnd(); }
 }
 
+// Before a card is laid down, note any match that was on the table, for the review at the end.
+const spot = i => { const n = line.length; return n === 1 ? "in the line" : i === 0 ? "at the top" : i === n - 1 ? "at the bottom" : i === 1 ? "second from the top" : "second from the bottom"; };
+const named = c => `${article(c)} ${nm(c)}`;
+function describe(keys) {
+  const [a, b] = keys.map(cardOf);
+  const how = a.rank === b.rank ? "made a pair with" : "made 13 with";
+  if (keys[0] === "hand") return `your ${nm(a)} ${how} the ${nm(b)} ${spot(keys[1])}`;
+  return `the ${nm(a)} ${spot(keys[0])} and the ${nm(b)} ${spot(keys[1])} ${a.rank === b.rank ? "were a pair" : "made 13"}`;
+}
+function noteMisses() {
+  const when = `Card ${52 - deck.length} of 52`;
+  const m = availableMatches();
+  if (m.length) {
+    misses.push({ kind: "miss", text: `<b>${when}:</b> you laid down ${named(hand)}, but ${m.map(describe).join("; and ")}.` });
+    return;
+  }
+  if (opts.classic) return;
+  const combo = bestCombo();
+  if (combo) {
+    // Note each optional 13 only once, not again on every later card while it sits there.
+    const sig = combo.filter(k => k !== "hand").map(k => line[k].rank + line[k].suit).join(",") + (combo.includes("hand") ? "+hand" : "");
+    if (misses.some(x => x.sig === sig && !sig.endsWith("+hand"))) return;
+    const cards = combo.map(cardOf).map(nm).join(" + ");
+    misses.push({ kind: "optional", sig, text: `<b>${when}:</b> you laid down ${named(hand)} when ${cards} could have made 13.` });
+  }
+}
+
 function lay() {
   if (over || !hand || hand.rank === 13) return;
   glow.clear(); cglow.clear(); snap();
+  noteMisses();
   line.push(hand);
   const laid = nm(hand);
   hand = null; sel = [];
