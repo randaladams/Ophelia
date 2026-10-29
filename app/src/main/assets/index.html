@@ -132,7 +132,6 @@ body {
   </div>
   <div class="actions" id="actions">
     <button id="layBtn" class="btn primary big" type="button">Lay down</button>
-    <button id="comboBtn" class="btn big combo" type="button" hidden>Send 3 to Pile</button>
   </div>
   <div class="hand">
     <div id="handSlot"></div>
@@ -174,8 +173,8 @@ body {
       <li>The top and bottom cards together, or the two cards side by side at either end, also clear when they make 13 or a pair.</li>
       <li>You may also add up three or more cards to make 13: your card and cards taken off the top and bottom ends of the line, with no gaps. Tap them one at a time. It's allowed, but it leaves other cards without partners, so use it with care.</li>
       <li>Tap the stack in the middle to see every card in the line.</li>
-      <li>When a match is waiting, the phone buzzes twice, the cards glow green, and the big button turns into Send to Pile. Press it to send them, or tap the cards yourself.</li>
-      <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz, the cards glow blue, and a blue Send to Pile button appears beside Lay down. It's your choice.</li>
+      <li>When a match is waiting, the phone buzzes twice and the cards glow green.</li>
+      <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz and the cards glow blue. Taking it is your choice.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -295,18 +294,6 @@ function bestCombo() {
   return best;
 }
 
-// What the big button does right now.
-function plan() {
-  if (over) return { type: "none" };
-  if (hand && hand.rank === 13) return { type: "king" };
-  const m = availableMatches();
-  if (m.length) {
-    const lineFirst = m.find(x => !x.includes("hand")) || m[0];
-    return { type: "match", keys: lineFirst };
-  }
-  return { type: hand ? "lay" : "none" };
-}
-
 function kingToPile() {
   snap(); pile++; hand = null; sel = []; glow.clear(); cglow.clear();
   nextCard("King to the pile. "); render();
@@ -326,13 +313,6 @@ function clearGroup(keys) {
   const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
   if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(); }
   render();
-}
-
-function primaryAction() {
-  const p = plan();
-  if (p.type === "king") kingToPile();
-  else if (p.type === "match") clearGroup(p.keys);
-  else if (p.type === "lay") lay();
 }
 
 function checkEnd() {
@@ -489,18 +469,11 @@ function render() {
   });
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
-  const p = plan();
-  $("layBtn").textContent = p.type === "lay" || p.type === "none" ? "Lay down" : "Send to Pile";
-  $("layBtn").disabled = p.type === "none";
-  const combo = p.type === "lay" || p.type === "none" ? bestCombo() : null;
-  $("comboBtn").hidden = !combo || over;
-  if (combo) $("comboBtn").textContent = `Send ${combo.length} to Pile`;
-  $("actions").classList.toggle("two", !!combo && !over);
+  $("layBtn").disabled = !hand || hand.rank === 13 || over;
   $("undoBtn").disabled = !hist.length;
 }
 
-$("layBtn").addEventListener("click", primaryAction);
-$("comboBtn").addEventListener("click", () => { const c = bestCombo(); if (c && !over) clearGroup(c); });
+$("layBtn").addEventListener("click", lay);
 $("midBtn").addEventListener("click", () => { expanded = !expanded; render(); });
 $("undoBtn").addEventListener("click", undo);
 $("newBtn").addEventListener("click", newGame);
