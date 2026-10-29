@@ -27,7 +27,10 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; background: var(--felt); color: var(--ink); font-family: var(--body); overflow: hidden; user-select: none; -webkit-user-select: none; }
+html, body { margin: 0; height: 100%; background: var(--felt); color: var(--ink); font-family: var(--body); overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Taps on game controls are handled from touch down to touch up, so the browser never turns them into a scroll or long-press. */
+.btn, .card, .icon-btn, .pill { touch-action: none; -webkit-touch-callout: none; }
+.line.all .card { touch-action: pan-x; }
 body {
   display: grid; grid-template-columns: minmax(230px, 32%) 1fr;
   /* Wide margins keep buttons clear of the edge-swipe gestures for Back and the system bars. */
@@ -62,7 +65,7 @@ body {
 .msg p.win { color: var(--good); font-weight: 700; font-size: 1.1rem; }
 .msg p.lose { color: var(--bad); font-weight: 700; }
 .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.btn { touch-action: manipulation; font: 700 .95rem var(--body); border-radius: 12px; padding: 11px 6px; border: 2px solid var(--brass); background: transparent; color: var(--ink); }
+.btn { font: 700 .95rem var(--body); border-radius: 12px; padding: 11px 6px; border: 2px solid var(--brass); background: transparent; color: var(--ink); }
 .btn.primary { background: var(--brass); color: var(--brass-ink); }
 .btn.big { font-size: 1.25rem; padding: 16px 10px; min-height: 64px; }
 .actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
@@ -80,7 +83,7 @@ body {
 .line { flex: 1; min-width: 0; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
 .line.all { justify-content: flex-start; overflow-x: auto; gap: 1.4vw; }
 .line.all .card { --h: min(38vh, 10.5vw); }
-.pill { position: absolute; top: 10px; right: 10px; white-space: nowrap; touch-action: manipulation; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; }
+.pill { position: absolute; top: 10px; right: 10px; white-space: nowrap; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; }
 .line .empty { color: var(--muted); font-size: 1rem; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .tag { height: 1em; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); }
@@ -113,7 +116,7 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .card { transition: transform .12s, box-shadow .12s; }
   .flip { animation: flip .3s ease-out; }
-  @keyframes flip { from { transform: rotateY(80deg); opacity: .3; } to { transform: none; opacity: 1; } }
+  @keyframes flip { from { transform: translateY(-8px); opacity: .3; } to { transform: none; opacity: 1; } }
   .glow { animation: glow 1s ease-in-out 3; }
   @keyframes glow { 50% { box-shadow: 0 0 0 9px rgba(116,211,148,.35); } }
   .cglow { animation: cglow 1s ease-in-out 3; }
@@ -244,6 +247,27 @@ const nm = c => FULL[c.rank] || String(c.rank);
 const article = c => [1, 8].includes(c.rank) ? "an" : "a";
 const match = (a, b) => a.rank === b.rank || a.rank + b.rank === 13;
 const say = (t, cls = "") => { $("msg").textContent = t; $("msg").className = cls; };
+
+// A tap counts as soon as the finger lifts, however long it was held, as long as it didn't slide far.
+function onTap(el, fn) {
+  let start = null, tapAt = 0;
+  el.addEventListener("pointerdown", e => {
+    start = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  el.addEventListener("pointerup", e => {
+    if (!start || e.pointerId !== start.id) return;
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    start = null;
+    if (moved > 40 || el.disabled) return;
+    tapAt = Date.now();
+    fn(e);
+  });
+  el.addEventListener("pointercancel", () => { start = null; });
+  // Keyboards and accessibility tools still send plain clicks.
+  el.addEventListener("click", e => { if (Date.now() - tapAt > 700 && !el.disabled) fn(e); });
+}
+document.addEventListener("contextmenu", e => e.preventDefault());
 
 function buzzLong() {
   try {
@@ -466,7 +490,7 @@ function cardEl(c, cls, key) {
     d.innerHTML = `<span class="c1">${c.suit}</span><span class="mid">${r}</span><span class="c2">${c.suit}</span>`;
     d.setAttribute("aria-label", `${nm(c)} of ${c.name}`);
   }
-  if (key !== undefined) d.addEventListener("click", () => tap(key, d));
+  if (key !== undefined) onTap(d, () => tap(key, d));
   return d;
 }
 
@@ -494,7 +518,7 @@ function render() {
         const t = document.createElement("span"); t.className = "tag"; s.appendChild(t);
         const st = document.createElement("button"); st.type = "button"; st.className = "card back stack";
         st.innerHTML = `<span>${hidden}<small>tap to show</small></span>`;
-        st.addEventListener("click", () => { expanded = true; render(); });
+        onTap(st, () => { expanded = true; render(); });
         s.appendChild(st); L.appendChild(s);
       }
       return;
@@ -514,23 +538,23 @@ function render() {
   $("undoBtn").disabled = !hist.length;
 }
 
-$("layBtn").addEventListener("click", lay);
-$("midBtn").addEventListener("click", () => { expanded = !expanded; render(); });
-$("undoBtn").addEventListener("click", undo);
-$("newBtn").addEventListener("click", newGame);
-$("endNew").addEventListener("click", newGame);
-$("endLook").addEventListener("click", () => { $("endScreen").hidden = true; });
-$("helpBtn").addEventListener("click", () => { $("help").hidden = false; });
-$("helpClose").addEventListener("click", () => { $("help").hidden = true; });
-$("helpBack").addEventListener("click", () => { $("help").hidden = true; });
+onTap($("layBtn"), lay);
+onTap($("midBtn"), () => { expanded = !expanded; render(); });
+onTap($("undoBtn"), undo);
+onTap($("newBtn"), newGame);
+onTap($("endNew"), newGame);
+onTap($("endLook"), () => { $("endScreen").hidden = true; });
+onTap($("helpBtn"), () => { $("help").hidden = false; });
+onTap($("helpClose"), () => { $("help").hidden = true; });
+onTap($("helpBack"), () => { $("help").hidden = true; });
 $("help").addEventListener("click", e => { if (e.target === $("help")) $("help").hidden = true; });
 // Called by the phone's Back button. Returns true when it closed something.
 $("optReal").checked = opts.real;
 $("optClassic").checked = opts.classic;
 $("optReal").addEventListener("change", e => { opts.real = e.target.checked; saveOpts(); alertDue = true; render(); });
 $("optClassic").addEventListener("change", e => { opts.classic = e.target.checked; saveOpts(); alertDue = true; render(); });
-$("setBtn").addEventListener("click", () => { $("settings").hidden = false; });
-$("setBack").addEventListener("click", () => { $("settings").hidden = true; });
+onTap($("setBtn"), () => { $("settings").hidden = false; });
+onTap($("setBack"), () => { $("settings").hidden = true; });
 $("settings").addEventListener("click", e => { if (e.target === $("settings")) $("settings").hidden = true; });
 window.handleBack = () => {
   if (!$("settings").hidden) { $("settings").hidden = true; return true; }

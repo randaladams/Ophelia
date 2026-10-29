@@ -33,6 +33,10 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setTextZoom(100);
         webView.addJavascriptInterface(new Bridge(this), "Android");
+        // A long press must never turn into text selection or a menu; the game treats it as a tap.
+        webView.setLongClickable(false);
+        webView.setOnLongClickListener(v -> true);
+        webView.setHapticFeedbackEnabled(false);
         setContentView(webView);
 
         if (savedInstanceState != null) {
