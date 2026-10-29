@@ -12,7 +12,7 @@ A one-deck solitaire card game, as taught by Grandma.
 - You may also add three or more cards to make 13: your card plus cards taken off the top and bottom ends of the line, with no gaps. It's optional, and it leaves other cards without partners, so it usually makes winning harder.
 - You win if the line is empty when the deck runs out.
 
-The phone buzzes and the cards glow when a match is waiting. The game plays in landscape.
+When a match is waiting, the phone buzzes twice, the cards glow green, and the big button becomes **Send to Pile**. When only a 13 made from three or more cards is possible, the phone gives one long buzz, the cards glow blue, and an optional blue Send to Pile button appears beside Lay down. The game plays in landscape.
 
 ## Getting the app
 

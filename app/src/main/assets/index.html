@@ -38,10 +38,10 @@ body {
 .title { display: flex; align-items: center; justify-content: space-between; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; color: var(--brass); }
 .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--brass); background: transparent; color: var(--brass); font: 700 1.05rem var(--body); }
-.stats { display: flex; gap: 6px; flex: none; }
-.stat { background: var(--felt-2); border-radius: 10px; padding: 3px 8px; display: flex; align-items: baseline; gap: 6px; }
+.stats { display: flex; gap: 6px; flex: 0 1 auto; min-width: 0; }
+.stat { white-space: nowrap; background: var(--felt-2); border-radius: 10px; padding: 3px 8px; display: flex; align-items: baseline; gap: 6px; }
 .stat b { font-family: var(--display); font-size: 1.15rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.stat span { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stat span { font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .hand { flex: 1; min-height: 0; display: flex; gap: 12px; align-items: center; }
 .msg { flex: 1; min-width: 0; font-size: .95rem; line-height: 1.35; }
 .msg .label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -54,17 +54,22 @@ body {
 .btn { touch-action: manipulation; font: 700 .95rem var(--body); border-radius: 12px; padding: 11px 6px; border: 2px solid var(--brass); background: transparent; color: var(--ink); }
 .btn.primary { background: var(--brass); color: var(--brass-ink); }
 .btn.big { font-size: 1.25rem; padding: 16px 10px; min-height: 64px; }
+.actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.actions.two { grid-template-columns: 1.3fr 1fr; }
+.actions.two .btn.big { font-size: 1.05rem; padding: 12px 6px; }
+.btn.combo { border-color: var(--sel); color: var(--sel); }
 .btn:disabled { opacity: .35; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 
 .table { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .tablehead { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; padding: 0 4px 8px; }
 .tablehead h2 { white-space: nowrap; margin: 0; font-family: var(--display); font-size: 1.15rem; }
-#lineCount { color: var(--muted); font: 400 .9rem var(--body); margin-left: 8px; font-variant-numeric: tabular-nums; }
-.line { flex: 1; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
+.linewrap { position: relative; flex: 1; min-height: 0; display: flex; }
+.count { position: absolute; left: 14px; bottom: 10px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; pointer-events: none; }
+.line { flex: 1; min-width: 0; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
 .line.all { justify-content: flex-start; overflow-x: auto; gap: 1.4vw; }
 .line.all .card { --h: min(38vh, 10.5vw); }
-.pill { flex: none; white-space: nowrap; touch-action: manipulation; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; margin-right: auto; }
+.pill { position: absolute; top: 10px; right: 10px; white-space: nowrap; touch-action: manipulation; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; }
 .line .empty { color: var(--muted); font-size: 1rem; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .tag { height: 1em; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); }
@@ -87,6 +92,7 @@ body {
 .card.live { border-color: var(--brass); }
 .card.sel { border-color: var(--sel); box-shadow: 0 0 0 4px var(--sel); transform: translateY(-6px); }
 .card.glow { box-shadow: 0 0 0 4px var(--good); }
+.card.cglow { box-shadow: 0 0 0 4px var(--sel); }
 .card.dim { opacity: .55; }
 .card.back { background: repeating-linear-gradient(45deg, var(--brass) 0 7px, #a77a22 7px 14px); border: 4px solid var(--card); }
 .card.blank { background: transparent; border: 2px dashed #3d6b53; box-shadow: none; }
@@ -99,6 +105,8 @@ body {
   @keyframes flip { from { transform: rotateY(80deg); opacity: .3; } to { transform: none; opacity: 1; } }
   .glow { animation: glow 1s ease-in-out 3; }
   @keyframes glow { 50% { box-shadow: 0 0 0 9px rgba(116,211,148,.35); } }
+  .cglow { animation: cglow 1s ease-in-out 3; }
+  @keyframes cglow { 50% { box-shadow: 0 0 0 9px rgba(121,182,242,.35); } }
   .shake { animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 }
@@ -122,7 +130,10 @@ body {
     <h1>Ophelia</h1>
     <button class="icon-btn" id="helpBtn" type="button" aria-label="How to play">?</button>
   </div>
-  <button id="layBtn" class="btn primary big" type="button">Lay down</button>
+  <div class="actions" id="actions">
+    <button id="layBtn" class="btn primary big" type="button">Lay down</button>
+    <button id="comboBtn" class="btn big combo" type="button" hidden>Send 3 to Pile</button>
+  </div>
   <div class="hand">
     <div id="handSlot"></div>
     <div class="msg"><div class="label">Your card</div><p id="msg">Shuffling…</p></div>
@@ -135,15 +146,18 @@ body {
 
 <section class="table">
   <div class="tablehead">
-    <h2>The line <span id="lineCount">0 cards</span></h2>
-    <button class="pill" id="midBtn" type="button" hidden>Show all</button>
+    <h2>The line</h2>
     <div class="stats">
       <div class="stat"><b id="deckCount">52</b><span>Deck</span></div>
       <div class="stat"><b id="pileCount">0</b><span>Pile</span></div>
       <div class="stat"><b id="record">0/0</b><span>Wins</span></div>
     </div>
   </div>
-  <div class="line" id="line"></div>
+  <div class="linewrap">
+    <div class="line" id="line"></div>
+    <span class="count" id="lineCount">0 cards</span>
+    <button class="pill" id="midBtn" type="button" hidden>Show all</button>
+  </div>
 </section>
 
 <div class="overlay" id="help" hidden>
@@ -160,7 +174,8 @@ body {
       <li>The top and bottom cards together, or the two cards side by side at either end, also clear when they make 13 or a pair.</li>
       <li>You may also add up three or more cards to make 13: your card and cards taken off the top and bottom ends of the line, with no gaps. Tap them one at a time. It's allowed, but it leaves other cards without partners, so use it with care.</li>
       <li>Tap the stack in the middle to see every card in the line.</li>
-      <li>The phone buzzes and the cards glow when a match is waiting.</li>
+      <li>When a match is waiting, the phone buzzes twice, the cards glow green, and the big button turns into Send to Pile. Press it to send them, or tap the cards yourself.</li>
+      <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz, the cards glow blue, and a blue Send to Pile button appears beside Lay down. It's your choice.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -183,7 +198,7 @@ const SUITS = [["♠︎", false, "spades"], ["♥︎", true, "hearts"], ["♦︎
 const NAMES = {1:"A",11:"J",12:"Q",13:"K"};
 const FULL = {1:"Ace",11:"Jack",12:"Queen",13:"King"};
 const $ = id => document.getElementById(id);
-let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], glow = new Set(), alertDue = false;
+let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], glow = new Set(), cglow = new Set(), alertDue = false;
 
 let rec = { w: 0, g: 0 };
 try { const s = JSON.parse(localStorage.getItem("ophelia-record")); if (s) rec = s; } catch (e) {}
@@ -194,6 +209,12 @@ const article = c => [1, 8].includes(c.rank) ? "an" : "a";
 const match = (a, b) => a.rank === b.rank || a.rank + b.rank === 13;
 const say = (t, cls = "") => { $("msg").textContent = t; $("msg").className = cls; };
 
+function buzzLong() {
+  try {
+    if (window.Android && Android.vibrateLong) Android.vibrateLong();
+    else if (navigator.vibrate) navigator.vibrate(260);
+  } catch (e) {}
+}
 function buzz() {
   try {
     if (window.Android && Android.vibrate) Android.vibrate();
@@ -205,7 +226,7 @@ function newGame() {
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; glow.clear();
+  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; glow.clear(); cglow.clear();
   $("endScreen").hidden = true;
   draw("");
   render();
@@ -217,7 +238,7 @@ function undo() {
   if (over) { rec.g--; if (result === "win") rec.w--; saveRec(); }
   const s = JSON.parse(hist.pop());
   deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result;
-  sel = []; glow.clear(); alertDue = false;
+  sel = []; glow.clear(); cglow.clear(); alertDue = false;
   $("endScreen").hidden = true;
   say("Took back your last move.");
   render();
@@ -239,7 +260,79 @@ function runAlert() {
   alertDue = false;
   const m = availableMatches();
   glow = new Set(m.flat());
-  if (m.length) buzz();
+  cglow = new Set();
+  if (m.length) { buzz(); return; }
+  const combo = bestCombo();
+  if (combo) { cglow = new Set(combo); buzzLong(); }
+}
+
+// The smallest group of 3+ cards that makes 13: optionally your card, plus runs off the top and bottom.
+function bestCombo() {
+  const n = line.length;
+  const useHand = hand && hand.rank !== 13 ? [1, 0] : [0];
+  let best = null;
+  for (const h of useHand) {
+    const base = h ? hand.rank : 0;
+    let top = 0;
+    for (let k = 0; k <= n; k++) {
+      if (k > 0) top += line[k - 1].rank;
+      if (base + top > 13) break;
+      let bot = 0;
+      for (let j = 0; k + j <= n; j++) {
+        if (j > 0) bot += line[n - j].rank;
+        const total = base + top + bot, count = h + k + j;
+        if (total > 13) break;
+        if (total === 13 && count >= 3 && (!best || count < best.length)) {
+          const keys = [];
+          if (h) keys.push("hand");
+          for (let i = 0; i < k; i++) keys.push(i);
+          for (let i = n - j; i < n; i++) keys.push(i);
+          best = keys;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+// What the big button does right now.
+function plan() {
+  if (over) return { type: "none" };
+  if (hand && hand.rank === 13) return { type: "king" };
+  const m = availableMatches();
+  if (m.length) {
+    const lineFirst = m.find(x => !x.includes("hand")) || m[0];
+    return { type: "match", keys: lineFirst };
+  }
+  return { type: hand ? "lay" : "none" };
+}
+
+function kingToPile() {
+  snap(); pile++; hand = null; sel = []; glow.clear(); cglow.clear();
+  nextCard("King to the pile. "); render();
+}
+
+function clearGroup(keys) {
+  const cards = keys.map(cardOf);
+  const isPair = cards.length === 2 && cards[0].rank === cards[1].rank;
+  const idxs = keys.filter(x => x !== "hand");
+  const usedHand = keys.includes("hand");
+  snap();
+  idxs.sort((x, y) => y - x).forEach(i => line.splice(i, 1));
+  if (usedHand) hand = null;
+  pile += cards.length; sel = []; alertDue = true; glow.clear(); cglow.clear();
+  if (line.length <= 4) expanded = false;
+  const names = cards.map(nm).join(" + ");
+  const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
+  if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(); }
+  render();
+}
+
+function primaryAction() {
+  const p = plan();
+  if (p.type === "king") kingToPile();
+  else if (p.type === "match") clearGroup(p.keys);
+  else if (p.type === "lay") lay();
 }
 
 function checkEnd() {
@@ -269,7 +362,7 @@ function nextCard(prefix) {
 
 function lay() {
   if (over || !hand || hand.rank === 13) return;
-  glow.clear(); snap();
+  glow.clear(); cglow.clear(); snap();
   line.push(hand);
   const laid = nm(hand);
   hand = null; sel = [];
@@ -311,12 +404,9 @@ function lineHasMove() {
 
 function tap(k, el) {
   if (over) return;
-  glow.clear();
+  glow.clear(); cglow.clear();
   const c = cardOf(k);
-  if (k === "hand" && c.rank === 13) {
-    snap(); pile++; hand = null; sel = [];
-    nextCard("King to the pile. "); render(); return;
-  }
+  if (k === "hand" && c.rank === 13) { kingToPile(); return; }
   sel = isSel(k) ? sel.filter(x => x !== k) : [...sel, k];
   if (!sel.length) { say("Nothing picked."); render(); return; }
   const cards = sel.map(cardOf);
@@ -332,14 +422,7 @@ function tap(k, el) {
       say("Cards from the line have to come off the ends, with no gaps.", "nope");
       render(); return;
     }
-    snap();
-    idxs.sort((x, y) => y - x).forEach(i => line.splice(i, 1));
-    if (usedHand) hand = null;
-    pile += cards.length; sel = []; alertDue = true;
-    if (line.length <= 4) expanded = false;
-    const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
-    if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(); }
-    render();
+    clearGroup([...sel]);
   } else if (total > 13) {
     sel = [];
     say(`${names} make ${total}, over 13.`, "nope");
@@ -373,7 +456,7 @@ function render() {
   $("record").textContent = `${rec.w}/${rec.g}`;
 
   const hs = $("handSlot"); hs.innerHTML = "";
-  if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : ""), "hand"));
+  if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : cglow.has("hand") ? " cglow" : ""), "hand"));
   else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
   flipNext = false;
 
@@ -400,17 +483,24 @@ function render() {
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
     s.appendChild(t);
-    if (tappable(i)) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
+    if (tappable(i)) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : cglow.has(i) ? " cglow" : ""), i));
     else s.appendChild(cardEl(c, "dim"));
     L.appendChild(s);
   });
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
-  $("layBtn").disabled = !hand || hand.rank === 13 || over;
+  const p = plan();
+  $("layBtn").textContent = p.type === "lay" || p.type === "none" ? "Lay down" : "Send to Pile";
+  $("layBtn").disabled = p.type === "none";
+  const combo = p.type === "lay" || p.type === "none" ? bestCombo() : null;
+  $("comboBtn").hidden = !combo || over;
+  if (combo) $("comboBtn").textContent = `Send ${combo.length} to Pile`;
+  $("actions").classList.toggle("two", !!combo && !over);
   $("undoBtn").disabled = !hist.length;
 }
 
-$("layBtn").addEventListener("click", lay);
+$("layBtn").addEventListener("click", primaryAction);
+$("comboBtn").addEventListener("click", () => { const c = bestCombo(); if (c && !over) clearGroup(c); });
 $("midBtn").addEventListener("click", () => { expanded = !expanded; render(); });
 $("undoBtn").addEventListener("click", undo);
 $("newBtn").addEventListener("click", newGame);

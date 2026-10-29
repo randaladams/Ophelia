@@ -91,8 +91,19 @@ public class MainActivity extends Activity {
             this.context = context.getApplicationContext();
         }
 
+        /** Two short buzzes: an ordinary match is waiting. */
         @JavascriptInterface
         public void vibrate() {
+            buzz(new long[] {0, 90, 60, 90});
+        }
+
+        /** One long buzz: only a 13 made from three or more cards is possible. */
+        @JavascriptInterface
+        public void vibrateLong() {
+            buzz(new long[] {0, 260});
+        }
+
+        private void buzz(long[] pattern) {
             Vibrator vibrator;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 VibratorManager manager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
@@ -101,7 +112,6 @@ public class MainActivity extends Activity {
                 vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
             }
             if (vibrator == null || !vibrator.hasVibrator()) return;
-            long[] pattern = {0, 90, 60, 90};
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1));
         }
     }
