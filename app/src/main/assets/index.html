@@ -31,14 +31,17 @@ html, body { margin: 0; height: 100%; background: var(--felt); color: var(--ink)
 /* Taps on game controls are handled from touch down to touch up, so the browser never turns them into a scroll or long-press. */
 .btn, .card, .icon-btn, .pill { touch-action: none; -webkit-touch-callout: none; }
 .line { touch-action: none; }
+/* Sideways: the title and controls form one panel on the left; the line fills the right. */
 body {
-  display: grid; grid-template-columns: minmax(230px, 32%) 1fr;
+  display: grid; grid-template-columns: minmax(230px, 32%) 1fr; grid-template-rows: auto 1fr;
+  grid-template-areas: "title table" "rail table";
   /* Wide margins keep buttons clear of the edge-swipe gestures for Back and the system bars. */
   padding: max(12px, env(safe-area-inset-top)) max(26px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
-  gap: 14px;
+  column-gap: 14px; row-gap: 0;
 }
-.rail { background: var(--rail); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.title { display: flex; align-items: center; justify-content: space-between; }
+.title { grid-area: title; background: var(--rail); border-radius: 16px 16px 0 0; padding: 12px 12px 10px; display: flex; align-items: center; justify-content: space-between; }
+.rail { grid-area: rail; background: var(--rail); border-radius: 0 0 16px 16px; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.table { grid-area: table; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .02em; color: var(--brass); }
 .titlebtns { display: flex; gap: 8px; }
 .toggle { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #2f5a44; cursor: pointer; line-height: 1.4; max-width: 560px; }
@@ -76,17 +79,42 @@ body {
 .btn:active:not(:disabled) { transform: translateY(1px); }
 
 .table { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.screenrow { flex-direction: column; gap: 10px; cursor: default; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg span { display: block; padding: 8px 12px; border-radius: 999px; border: 2px solid #2f5a44; color: var(--muted); font-weight: 700; font-size: .9rem; }
+.seg input:checked + span { border-color: var(--brass); background: var(--brass); color: var(--brass-ink); }
+.seg input:focus-visible + span { outline: 3px solid var(--sel); outline-offset: 2px; }
 .tablehead { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; padding: 0 4px 8px; }
 .tablehead h2 { white-space: nowrap; margin: 0; font-family: var(--display); font-size: 1.15rem; }
-.linewrap { position: relative; flex: 1; min-height: 0; display: flex; }
-.count { position: absolute; left: 14px; bottom: 10px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; pointer-events: none; }
-.line { flex: 1; min-width: 0; min-height: 0; border: 1px solid #2f5a44; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 2.2vw; padding: 8px 10px; }
-/* Show all: every card is shrunk to fit and wrapped onto rows, so nothing ever scrolls under your finger. */
-.line.all { flex-wrap: wrap; align-content: center; gap: 6px 8px; padding: 50px 10px 30px; }
-.line.all .card { --h: var(--fit, 80px); }
+.linewrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2f5a44; border-radius: 16px; }
+.count { position: absolute; left: 14px; top: 12px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; pointer-events: none; }
+.line { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 16px; padding: 44px 10px 6px; }
+.line .card { --h: var(--fit, 100px); }
+/* Wrapped view: cards are sized to fit on rows, so nothing ever scrolls under your finger. */
+.line.all { flex-wrap: wrap; align-content: center; gap: 6px 8px; }
 .line.all .slot { gap: 2px; }
 .pill { position: absolute; top: 10px; right: 10px; white-space: nowrap; font: 700 .85rem var(--body); color: var(--brass); background: transparent; border: 2px solid var(--brass); border-radius: 999px; padding: 6px 12px; }
 .line .empty { color: var(--muted); font-size: 1rem; }
+
+/* Card count: one row per suit, one column per rank. */
+.tally { flex: none; padding: 0 10px 8px; }
+.tally table { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; font: 700 10.5px/1 var(--body); font-variant-numeric: tabular-nums; }
+.tally th { color: var(--muted); height: 13px; font-weight: 700; }
+.tally th.suit { width: 15px; font: 700 13px/1 var(--display); color: var(--ink); }
+.tally th.suit.red { color: #f08a80; }
+.tally th.num { width: 26px; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+.tally td { height: 15px; text-align: center; border-radius: 3px; padding: 0; overflow: hidden; }
+.tally td.t-deck { background: #e9efe6; color: var(--black); }
+.tally td.t-deck.red { color: var(--red); }
+.tally td.t-line { box-shadow: inset 0 0 0 1.5px var(--brass); color: var(--brass); }
+.tally td.t-hand { background: var(--sel); color: #0b1a13; }
+.tally td.t-pile { color: #4d6f5b; }
+.tally td.num { color: var(--ink); font-size: 11px; }
+.tally tr.ranks td { color: var(--muted); }
+.tally tr.ranks td.zero { color: #4d6f5b; }
+.tally tr.ranks td.lbl { font-size: 9px; letter-spacing: .04em; text-transform: uppercase; text-align: left; padding-left: 4px; }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .tag { height: 1em; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); }
 
@@ -105,6 +133,30 @@ body {
 .card .c2 { bottom: 6%; right: 8%; transform: rotate(180deg); }
 .card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .44); letter-spacing: -.04em; }
 .card.small { --h: min(34vh, 11vw); }
+
+/* Upright: title on top, the line fills the middle, controls sit at the bottom under your thumbs. */
+@media (orientation: portrait) {
+  body {
+    grid-template-columns: 1fr; grid-template-rows: auto 1fr auto;
+    grid-template-areas: "title" "table" "rail";
+    padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    row-gap: 10px;
+  }
+  .title { background: none; padding: 0 2px; }
+  .tablehead { padding: 0 0 8px; }
+  .tablehead h2 { display: none; }
+  .stats { flex: 1; justify-content: space-between; }
+  .stat { flex: 1; justify-content: center; }
+  .rail { border-radius: 16px; padding: 12px; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "card msg" "card act" "btns btns"; gap: 10px; }
+  .hand { display: contents; }
+  #handSlot { grid-area: card; align-self: center; }
+  /* Fixed height, so a longer message never resizes the line and moves the cards under your finger. */
+  .msg { grid-area: msg; height: 92px; overflow: hidden; font-size: .9rem; display: flex; flex-direction: column; justify-content: flex-end; }
+  .actions { grid-area: act; }
+  .buttons { grid-area: btns; }
+  .card.small { --h: 128px; }
+  .btn.big { min-height: 60px; }
+}
 .card.live { border-color: var(--brass); }
 .card.sel { border-color: var(--sel); box-shadow: 0 0 0 5px var(--sel); }
 .card.glow { box-shadow: 0 0 0 4px var(--good); }
@@ -147,14 +199,15 @@ body {
 </head>
 <body>
 
-<section class="rail">
-  <div class="title">
+<header class="title">
     <h1>Ophelia</h1>
     <div class="titlebtns">
       <button class="icon-btn" id="setBtn" type="button" aria-label="Settings">⚙&#xFE0E;</button>
       <button class="icon-btn" id="helpBtn" type="button" aria-label="How to play">?</button>
     </div>
-  </div>
+</header>
+
+<section class="rail">
   <div class="actions" id="actions">
     <button id="layBtn" class="btn primary big" type="button">Lay down</button>
   </div>
@@ -179,6 +232,7 @@ body {
   </div>
   <div class="linewrap">
     <div class="line" id="line"></div>
+    <div class="tally" id="tally"></div>
     <span class="count" id="lineCount">0 cards</span>
     <button class="pill" id="midBtn" type="button" hidden>Show all</button>
   </div>
@@ -200,6 +254,19 @@ body {
       <span class="sw" aria-hidden="true"></span>
       <span><b>Classic rules</b>Only pairs and two-card 13s. No 13s made from three or more cards.</span>
     </label>
+    <label class="toggle" for="optTally">
+      <input type="checkbox" id="optTally">
+      <span class="sw" aria-hidden="true"></span>
+      <span><b>Card count</b>A chart under the line showing which cards are on the pile, in the line, and still in the deck, with counts for each suit and each rank.</span>
+    </label>
+    <div class="toggle screenrow">
+      <span><b>Screen</b>Turn the phone upright to see more of the line at once.</span>
+      <div class="seg" role="radiogroup" aria-label="Screen">
+        <label><input type="radio" name="screen" value="auto"><span>Turns with phone</span></label>
+        <label><input type="radio" name="screen" value="landscape"><span>Sideways</span></label>
+        <label><input type="radio" name="screen" value="portrait"><span>Upright</span></label>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -219,7 +286,9 @@ body {
       <li>Tap the stack in the middle to see every card in the line.</li>
       <li>When a match is waiting, the phone buzzes twice and the cards glow green.</li>
       <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz and the cards glow blue. Taking it is your choice.</li>
-      <li>Tap ⚙ for Real deck (no alerts) and Classic rules (no three-card 13s).</li>
+      <li>The card count under the line shows every card: bright = still in the deck, gold outline = in the line, blue = your card, dot = on the pile. Pile and Left count each suit; the bottom row counts how many of each rank are left.</li>
+      <li>Turn the phone upright to see more of the line at once.</li>
+      <li>Tap ⚙ for Real deck (no alerts), Classic rules (no three-card 13s), the card count, and how the screen turns.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -248,7 +317,7 @@ const SUITS = [["♠︎", false, "spades"], ["♥︎", true, "hearts"], ["♦︎
 const NAMES = {1:"A",11:"J",12:"Q",13:"K"};
 const FULL = {1:"Ace",11:"Jack",12:"Queen",13:"King"};
 const $ = id => document.getElementById(id);
-let opts = { real: false, classic: false };
+let opts = { real: false, classic: false, tally: true, screen: "auto" };
 try { Object.assign(opts, JSON.parse(localStorage.getItem("ophelia-settings")) || {}); } catch (e) {}
 function saveOpts() { try { localStorage.setItem("ophelia-settings", JSON.stringify(opts)); } catch (e) {} }
 let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], misses = [], glow = new Set(), cglow = new Set(), alertDue = false;
@@ -473,7 +542,6 @@ function lay() {
 }
 
 function cardOf(k) { return k === "hand" ? hand : line[k]; }
-function tappable(i) { const n = line.length; return expanded || i <= 1 || i >= n - 2; }
 const isSel = k => sel.includes(k);
 
 // Cards from the line must come off the ends: a run from the top and/or a run from the bottom, no gaps.
@@ -539,19 +607,51 @@ function tap(k, el) {
   }
 }
 
-// Largest card size that lets all n cards fit the line box without scrolling.
-function fitAll(L, n) {
+// How many cards fit in the line box at card height h, on wrapped rows.
+const GAPX = 8, GAPY = 6, TAG = 14;
+function boxOf(L) {
   const cs = getComputedStyle(L);
-  const W = L.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const H = L.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const gapX = 8, gapY = 6, tag = 16;
-  let h = Math.min(H - tag, 160);
-  for (; h > 30; h -= 2) {
-    const perRow = Math.max(1, Math.floor((W + gapX) / (h * 0.7 + gapX)));
-    const rows = Math.ceil(n / perRow);
-    if (rows * (h + tag) + (rows - 1) * gapY <= H) break;
+  return {
+    W: L.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+    H: L.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom),
+  };
+}
+function capacity(box, h) {
+  const perRow = Math.max(1, Math.floor((box.W + GAPX) / (h * 0.7 + GAPX)));
+  const rows = Math.max(0, Math.floor((box.H + GAPY) / (h + TAG + GAPY)));
+  return perRow * rows;
+}
+// Biggest card height between lo and hi at which n cards fit, or 0 if none does.
+function biggest(box, n, hi, lo) {
+  for (let h = Math.floor(hi); h >= lo; h -= 2) if (capacity(box, h) >= n) return h;
+  return 0;
+}
+
+// Card count chart under the line.
+const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+function renderTally() {
+  const T = $("tally");
+  T.hidden = !opts.tally;
+  if (!opts.tally) return;
+  const where = {};
+  deck.forEach(c => where[c.name + c.rank] = "deck");
+  line.forEach(c => where[c.name + c.rank] = "line");
+  if (hand) where[hand.name + hand.rank] = "hand";
+  const left = {};
+  RANKS.forEach(r => left[r] = 0);
+  let html = `<table><thead><tr><th class="suit"></th>${RANKS.map(r => `<th>${NAMES[r] || r}</th>`).join("")}<th class="num">Pile</th><th class="num">Left</th></tr></thead><tbody>`;
+  for (const [sym, red, name] of SUITS) {
+    let onPile = 0, out = 0;
+    html += `<tr><th class="suit${red ? " red" : ""}">${sym}</th>`;
+    for (const r of RANKS) {
+      const w = where[name + r] || "pile";
+      if (w === "pile") onPile++; else { out++; left[r]++; }
+      html += `<td class="t-${w}${red && w === "deck" ? " red" : ""}">${w === "pile" ? "·" : (NAMES[r] || r)}</td>`;
+    }
+    html += `<td class="num">${onPile}</td><td class="num">${out}</td></tr>`;
   }
-  L.style.setProperty("--fit", h + "px");
+  html += `<tr class="ranks"><th></th>${RANKS.map(r => `<td class="${left[r] ? "" : "zero"}">${left[r]}</td>`).join("")}<td class="lbl" colspan="2">← left</td></tr></tbody></table>`;
+  T.innerHTML = html;
 }
 
 function cardEl(c, cls, key) {
@@ -579,15 +679,42 @@ function render() {
   else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
   flipNext = false;
 
+  renderTally();
   const L = $("line"); L.innerHTML = "";
-  const n = line.length, hidden = n > 4 && !expanded ? n - 4 : 0;
-  L.classList.toggle("all", expanded && n > 4);
-  $("midBtn").hidden = n <= 4;
+  const n = line.length;
+  const portrait = innerHeight > innerWidth;
+  // Decide which cards to show: `top` from the top, `bot` from the bottom, a stack for the rest.
+  let top = n, bot = 0, wrap = false, h;
+  const box = boxOf(L);
+  if (!n) {
+    h = 100;
+  } else if (expanded) {
+    wrap = true;
+    h = biggest(box, n, Math.min(box.H - TAG, 150), 24) || 24;
+  } else if (!portrait) {
+    // Sideways: top two and bottom two, big, in one row.
+    if (n > 4) { top = 2; bot = 2; }
+    h = Math.min(box.H - 22, (box.W - 4 * 16) / (5 * 0.7), 170);
+  } else {
+    // Upright: as many cards as fit at a comfortable size, wrapped onto rows.
+    wrap = true;
+    const MIN = 72;
+    h = biggest(box, n, Math.min(box.H - TAG, 150), MIN);
+    if (!h) {
+      h = MIN;
+      const slots = Math.max(5, capacity(box, MIN)) - 1;
+      top = Math.ceil(slots / 2); bot = slots - top;
+    }
+  }
+  L.style.setProperty("--fit", Math.max(24, Math.floor(h)) + "px");
+  L.classList.toggle("all", wrap);
+  const hidden = n - top - bot > 0 && bot > 0 ? n - top - bot : 0;
+  $("midBtn").hidden = !(expanded ? n > 4 : hidden > 0);
   $("midBtn").textContent = expanded ? "Hide middle" : "Show all";
   if (!n) { const e = document.createElement("span"); e.className = "empty"; e.textContent = "No cards in the line yet."; L.appendChild(e); }
   line.forEach((c, i) => {
-    if (hidden && i >= 2 && i <= n - 3) {
-      if (i === 2) {
+    if (hidden && i >= top && i < n - bot) {
+      if (i === top) {
         const s = document.createElement("div"); s.className = "slot";
         const t = document.createElement("span"); t.className = "tag"; s.appendChild(t);
         const st = document.createElement("button"); st.type = "button"; st.className = "card back stack";
@@ -602,11 +729,9 @@ function render() {
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
     s.appendChild(t);
-    if (tappable(i)) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : cglow.has(i) ? " cglow" : ""), i));
-    else s.appendChild(cardEl(c, "dim"));
+    s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : cglow.has(i) ? " cglow" : ""), i));
     L.appendChild(s);
   });
-  if (expanded && n > 4) fitAll(L, n);
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
   $("layBtn").disabled = !hand || hand.rank === 13 || over;
@@ -625,6 +750,17 @@ onTap($("helpBack"), () => { $("help").hidden = true; });
 $("help").addEventListener("click", e => { if (e.target === $("help")) $("help").hidden = true; });
 // Called by the phone's Back button. Returns true when it closed something.
 $("optReal").checked = opts.real;
+$("optTally").checked = opts.tally;
+$("optTally").addEventListener("change", e => { opts.tally = e.target.checked; saveOpts(); render(); });
+function applyScreen() { try { if (window.Android && Android.setOrientation) Android.setOrientation(opts.screen); } catch (e) {} }
+document.querySelectorAll('input[name="screen"]').forEach(r => {
+  r.checked = r.value === opts.screen;
+  r.addEventListener("change", e => { if (e.target.checked) { opts.screen = e.target.value; saveOpts(); applyScreen(); } });
+});
+applyScreen();
+// Turning the phone resizes the page; lay the table out again.
+let resizeTimer = 0;
+addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 60); });
 $("optClassic").checked = opts.classic;
 $("optReal").addEventListener("change", e => { opts.real = e.target.checked; saveOpts(); alertDue = true; render(); });
 $("optClassic").addEventListener("change", e => { opts.classic = e.target.checked; saveOpts(); alertDue = true; render(); });

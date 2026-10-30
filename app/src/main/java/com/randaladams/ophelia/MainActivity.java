@@ -2,6 +2,7 @@ package com.randaladams.ophelia;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -87,12 +88,23 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Lets the game page buzz the phone when a match is waiting. */
+    /** Lets the game page buzz the phone and choose how the screen turns. */
     static class Bridge {
         private final Context context;
+        private final Activity activity;
 
-        Bridge(Context context) {
-            this.context = context.getApplicationContext();
+        Bridge(Activity activity) {
+            this.activity = activity;
+            this.context = activity.getApplicationContext();
+        }
+
+        /** "landscape" keeps the table sideways, "portrait" keeps it upright, anything else turns with the phone. */
+        @JavascriptInterface
+        public void setOrientation(String mode) {
+            final int o = "landscape".equals(mode) ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    : "portrait".equals(mode) ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                    : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR;
+            activity.runOnUiThread(() -> activity.setRequestedOrientation(o));
         }
 
         /** Two short buzzes: an ordinary match is waiting. */
