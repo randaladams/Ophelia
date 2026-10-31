@@ -60,6 +60,10 @@ jobs:
           PLAY_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.keystore" .github/scripts/gradle.sh bundleRelease -Psigning=play --warning-mode=fail
           cp app/build/outputs/bundle/release/app-release.aab Ophelia.aab
           rm -f "$RUNNER_TEMP/upload.keystore"
+          # Show which key signed the bundle, to compare with the upload key in Play Console.
+          fp=$(keytool -printcert -jarfile Ophelia.aab | sed -n 's/^[[:space:]]*SHA256: //p' | head -1)
+          [ -n "$fp" ] || { echo "::error title=Play bundle is not signed::Ophelia.aab has no signature"; exit 1; }
+          echo "::notice title=Play bundle signed by::Upload key SHA-256 $fp"
 
       - name: Keep the APK with this run
         uses: actions/upload-artifact@v7
@@ -78,8 +82,14 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "build-${{ github.run_number }}" Ophelia.apk
-          --title "Ophelia build ${{ github.run_number }}"
-          --notes "Download Ophelia.apk and open it on your Android phone or tablet to install."
-          --latest
+          TAG: build-${{ github.run_number }}
+        # A rerun of the same build replaces the APK on its existing release instead of failing.
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" Ophelia.apk --clobber
+          else
+            gh release create "$TAG" Ophelia.apk \
+              --title "Ophelia build ${{ github.run_number }}" \
+              --notes "Download Ophelia.apk and open it on your Android phone or tablet to install." \
+              --latest
+          fi
