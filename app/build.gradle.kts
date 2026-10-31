@@ -15,6 +15,10 @@ android {
     namespace = "com.adamselite.ophelia"
     compileSdk = 37
 
+    // The app is written in Java. Turning off AGP's built-in Kotlin skips Kotlin compilation,
+    // as recommended for modules with no Kotlin code (developer.android.com/build/migrate-to-built-in-kotlin).
+    enableKotlin = false
+
     defaultConfig {
         applicationId = "com.adamselite.ophelia"
         minSdk = 26          // Android 8.0: phones and tablets
