@@ -44,7 +44,7 @@ jobs:
 
       # Any Gradle deprecation warning fails the build instead of scrolling past.
       - name: Build the sideload APK
-        run: ./gradlew assembleRelease --warning-mode=fail
+        run: .github/scripts/gradle.sh assembleRelease --warning-mode=fail
 
       - name: Name the APK
         run: cp app/build/outputs/apk/release/app-release.apk Ophelia.apk
@@ -57,7 +57,7 @@ jobs:
           PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         run: |
           echo "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
-          PLAY_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.keystore" ./gradlew bundleRelease -Psigning=play --warning-mode=fail
+          PLAY_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.keystore" .github/scripts/gradle.sh bundleRelease -Psigning=play --warning-mode=fail
           cp app/build/outputs/bundle/release/app-release.aab Ophelia.aab
           rm -f "$RUNNER_TEMP/upload.keystore"
 
