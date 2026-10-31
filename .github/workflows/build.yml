@@ -44,7 +44,7 @@ jobs:
 
       # Any Gradle deprecation warning fails the build instead of scrolling past.
       - name: Build the sideload APK
-        run: .github/scripts/gradle.sh assembleRelease --warning-mode=fail
+        run: .github/scripts/gradle.sh assembleRelease --warning-mode=fail -Dorg.gradle.deprecation.trace=true
 
       - name: Name the APK
         run: cp app/build/outputs/apk/release/app-release.apk Ophelia.apk
