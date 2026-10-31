@@ -163,7 +163,10 @@ body {
 .card .c1 { top: 6%; left: 8%; }
 .card .c2 { bottom: 6%; right: 8%; transform: rotate(180deg); }
 .card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .44); letter-spacing: -.04em; }
-.card.small { --h: min(34vh, 11vw); }
+.card.small { --h: min(46vh, 15vw); }
+.card.finish { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); display: grid; place-items: center; text-align: center; }
+.card.finish span { font: 700 calc(var(--h) * .13)/1.15 var(--body); }
+.msg { cursor: pointer; touch-action: none; }
 
 /* Upright: title on top, the line fills the middle, controls sit at the bottom under your thumbs. */
 @media (orientation: portrait) {
@@ -178,12 +181,11 @@ body {
   .tablehead h2 { display: none; }
   .stats { flex: 1; justify-content: space-between; }
   .stat { flex: 1; justify-content: center; }
-  .rail { border-radius: 16px; padding: 12px; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "card msg" "card act" "btns btns"; gap: 10px; }
+  .rail { border-radius: 16px; padding: 12px; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "card msg" "btns btns"; gap: 10px; }
   .hand { display: contents; }
   #handSlot { grid-area: card; align-self: center; }
   /* Fixed height, so a longer message never resizes the line and moves the cards under your finger. */
-  .msg { grid-area: msg; height: 92px; overflow: hidden; font-size: .9rem; display: flex; flex-direction: column; justify-content: flex-end; }
-  .actions { grid-area: act; }
+  .msg { grid-area: msg; height: 128px; overflow: hidden; font-size: .95rem; display: flex; flex-direction: column; justify-content: center; }
   .buttons { grid-area: btns; }
   .card.small { --h: 128px; }
   .btn.big { min-height: 60px; }
@@ -256,9 +258,6 @@ body {
 </header>
 
 <section class="rail">
-  <div class="actions" id="actions">
-    <button id="layBtn" class="btn primary big" type="button">Lay down</button>
-  </div>
   <div class="hand">
     <div id="handSlot"></div>
     <div class="msg"><div class="label">Your card</div><p id="msg">Shuffling…</p></div>
@@ -323,8 +322,8 @@ body {
     <ul>
       <li>Ace 1, number cards face value, Jack 11, Queen 12, King 13.</li>
       <li>A new card turns over by itself. A King is 13 alone: tap it to send it to the pile.</li>
-      <li>If your card makes 13 with, or matches, the top or bottom card of the line, tap both to clear them, or drag one onto the other.</li>
-      <li>If it fits nowhere, tap Lay down. It goes at the bottom of the line.</li>
+      <li>If your card makes 13 with, or matches, the top or bottom card of the line, drag one onto the other, or tap the line card and then your card.</li>
+      <li>If it fits nowhere, tap your card. It goes at the bottom of the line.</li>
       <li>The top and bottom cards together, or the two cards side by side at either end, also clear when they make 13 or a pair.</li>
       <li>Tap the stack in the middle to see every card in the line.</li>
       <li>When a match is waiting, the phone buzzes twice and the cards glow green.</li>
@@ -516,7 +515,8 @@ function showEnd() {
 function draw(prefix) {
   if (over || hand || !deck.length) return;
   hand = deck.pop(); sel = []; flipNext = true; alertDue = true;
-  say(prefix + (hand.rank === 13 ? "You drew a King. Tap it to send it to the pile." : `You drew ${article(hand)} ${nm(hand)}.`));
+  say(prefix + (hand.rank === 13 ? "You drew a King. Tap it to send it to the pile."
+    : `You drew ${article(hand)} ${nm(hand)}.` + (opts.real ? "" : " Tap it to lay it down, or drag it onto a match.")));
 }
 function nextCard(prefix) {
   if (deck.length) draw(prefix); else { say(prefix.trim(), "ok"); checkEnd(prefix); }
@@ -603,8 +603,11 @@ function tap(k) {
   if (k === "hand" && c.rank === 13) { kingToPile(); return; }
   if (isSel(k)) { sel = []; say("Nothing picked."); render(); return; }
   if (sel.length) { tryPair(sel[0], k); return; }
+  // Your card: a tap lays it at the bottom of the line. To pair it, drag it onto the match,
+  // or tap the line card first and then your card.
+  if (k === "hand") { lay(); return; }
   sel = [k];
-  say(opts.real ? `${nm(c)} picked.` : `${nm(c)} picked. Tap or drag it onto a card that makes 13 or matches it.`);
+  say(opts.real ? `${nm(c)} picked.` : `${nm(c)} picked. Tap your card or another card that makes 13 or matches it.`);
   render();
 }
 
@@ -763,8 +766,14 @@ function render() {
   $("record").textContent = `${rec.w}/${rec.g}`;
 
   const hs = $("handSlot"); hs.innerHTML = "";
+  const finishing = !over && !hand && !deck.length;
   if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : ""), "hand"));
-  else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
+  else if (finishing) {
+    const f = document.createElement("button"); f.type = "button"; f.className = "card small finish";
+    f.innerHTML = "<span>Finish<br>game</span>";
+    onTap(f, finishGame);
+    hs.appendChild(f);
+  } else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
   flipNext = false;
 
   renderTally();
@@ -825,13 +834,16 @@ function render() {
   });
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
-  const finishing = !over && !hand && !deck.length;
-  $("layBtn").textContent = finishing ? "Finish game" : "Lay down";
-  $("layBtn").disabled = !finishing && (!hand || hand.rank === 13 || over);
+
   $("undoBtn").disabled = !hist.length;
 }
 
-onTap($("layBtn"), () => (!hand && !deck.length ? finishGame() : lay()));
+// The message beside your card is part of the same target: tapping it acts like tapping the card.
+onTap(document.querySelector(".msg"), () => {
+  if (over) return;
+  if (hand) tap("hand");
+  else if (!deck.length) finishGame();
+});
 onTap($("midBtn"), () => { expanded = !expanded; render(); });
 onTap($("undoBtn"), undo);
 onTap($("newBtn"), newGame);
