@@ -1,6 +1,6 @@
 # Versions checked against official release pages on 2026-10-30. Dependabot proposes updates weekly.
 [versions]
-agp = "9.4.0"                 # developer.android.com/build/releases/gradle-plugin
+agp = "9.5.0"                 # developer.android.com/build/releases/gradle-plugin
 androidx-activity = "1.13.0"  # developer.android.com/jetpack/androidx/releases/activity
 androidx-core = "1.19.1"      # developer.android.com/jetpack/androidx/releases/core
 
