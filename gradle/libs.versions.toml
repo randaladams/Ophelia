@@ -3,6 +3,7 @@
 agp = "9.5.0"                 # developer.android.com/build/releases/agp-9-5-0-release-notes (Oct 2026)
 androidx-activity = "1.13.0"  # developer.android.com/jetpack/androidx/releases/activity
 androidx-core = "1.19.1"      # developer.android.com/jetpack/androidx/releases/core
+kotlin = "2.4.21"             # github.com/JetBrains/kotlin/releases (Oct 2026)
 
 [libraries]
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
@@ -10,3 +11,5 @@ androidx-core = { module = "androidx.core:core", version.ref = "androidx-core" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# AGP loads the Kotlin Gradle plugin even for Java-only apps; this keeps it on the newest stable version.
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
