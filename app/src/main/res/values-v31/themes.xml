@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ always shows a launch screen. Make it plain felt-green with no icon,
+         so the game's own animated opening is the first thing you see. -->
+    <style name="Theme.Ophelia" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/icon_background</item>
+        <item name="android:windowSplashScreenBackground">@color/icon_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
+    </style>
+</resources>

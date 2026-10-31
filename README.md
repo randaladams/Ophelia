@@ -19,6 +19,8 @@ Under the line, a **card count** chart shows every card: still in the deck, in t
 
 Turn the phone upright and the table rearranges: the line fills the middle of the screen and shows many more cards at once, with your card and the buttons at the bottom.
 
+The game opens with a short animation (tap to skip). The version number shows on the opening screen and at the bottom of the settings.
+
 The ⚙ button has these settings: **Real deck** turns off every buzz, glow and hint so you spot matches yourself; **Card count** shows or hides the chart; **Screen** chooses whether the table turns with the phone or stays sideways or upright.
 
 ## Getting the app

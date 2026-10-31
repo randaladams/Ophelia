@@ -61,6 +61,10 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true   // lets the game show its version number
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

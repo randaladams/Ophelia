@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Felt-green from the first frame, so the game never flashes white while it loads. -->
+    <style name="Theme.Ophelia" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/icon_background</item>
+    </style>
+</resources>

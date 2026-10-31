@@ -92,6 +92,12 @@ public class MainActivity extends ComponentActivity {
             this.context = activity.getApplicationContext();
         }
 
+        /** The version shown in settings and on the opening screen, e.g. 1.0.26. */
+        @JavascriptInterface
+        public String versionName() {
+            return BuildConfig.VERSION_NAME;
+        }
+
         /** Two short buzzes: a match is waiting. */
         @JavascriptInterface
         public void vibrate() {

@@ -27,6 +27,34 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
+
+/* Opening: five cards deal in and fan out, the name rises, then it all fades into the table. Tap to skip. */
+#intro { position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 40%, #21493a, var(--felt) 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; touch-action: none; }
+#intro.out { opacity: 0; transition: opacity .45s ease-in; pointer-events: none; }
+#intro .fan { position: relative; width: 1px; height: min(34vh, 190px); margin-bottom: 18px; }
+#intro .ic { --h: min(26vh, 150px); position: absolute; left: calc(var(--h) * -.35); bottom: 0; width: calc(var(--h) * .7); height: var(--h); border-radius: calc(var(--h) * .07); background: var(--card); border: 2px solid var(--card-edge); box-shadow: 0 6px 16px rgba(0,0,0,.45); color: var(--black); font-family: var(--display); font-weight: 700; transform-origin: 50% 120%; opacity: 0; }
+#intro .ic b { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--h) * .44); }
+#intro .ic i { position: absolute; top: 6%; left: 9%; font-style: normal; font-size: calc(var(--h) * .17); }
+#intro .ic1 i, #intro .ic3 i, #intro .ic5 i, #intro .ic1 b, #intro .ic3 b, #intro .ic5 b { color: var(--red); }
+#intro .iname { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 9vmin, 3.6rem); color: var(--brass); letter-spacing: .03em; opacity: 0; }
+#intro .itag { margin: 0; color: var(--muted); font-size: 1rem; opacity: 0; }
+#intro .iver { position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); margin: 0; color: #6f8f7a; font-size: .8rem; }
+#intro.play .ic { animation: deal .42s cubic-bezier(.2,.8,.3,1) forwards, fan .5s cubic-bezier(.3,1.3,.5,1) forwards; }
+#intro.play .ic1 { --r: -30deg; animation-delay: 0s, .75s; }
+#intro.play .ic2 { --r: -15deg; animation-delay: .1s, .75s; }
+#intro.play .ic3 { --r: 0deg; animation-delay: .2s, .75s; }
+#intro.play .ic4 { --r: 15deg; animation-delay: .3s, .75s; }
+#intro.play .ic5 { --r: 30deg; animation-delay: .4s, .75s; }
+#intro.play .iname { animation: rise .5s ease-out .95s forwards; }
+#intro.play .itag { animation: rise .5s ease-out 1.15s forwards; }
+@keyframes deal { from { opacity: 0; transform: translateY(70vh) rotate(-8deg); } to { opacity: 1; transform: none; } }
+@keyframes fan { from { opacity: 1; transform: rotate(0); } to { opacity: 1; transform: rotate(var(--r)); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #intro.play .ic, #intro.play .iname, #intro.play .itag { animation: none; opacity: 1; }
+  #intro.play .ic1 { transform: rotate(-30deg); } #intro.play .ic2 { transform: rotate(-15deg); }
+  #intro.play .ic4 { transform: rotate(15deg); } #intro.play .ic5 { transform: rotate(30deg); }
+}
 html, body { margin: 0; height: 100%; background: var(--felt); color: var(--ink); font-family: var(--body); overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 /* Taps on game controls are handled from touch down to touch up, so the browser never turns them into a scroll or long-press. */
 .btn, .card, .icon-btn, .pill { touch-action: none; -webkit-touch-callout: none; }
@@ -54,7 +82,10 @@ body {
 .toggle input:checked + .sw { background: var(--brass); }
 .toggle input:checked + .sw::after { transform: translateX(22px); }
 .toggle input:focus-visible + .sw { outline: 3px solid var(--sel); outline-offset: 2px; }
-.icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--brass); background: transparent; color: var(--brass); font: 700 1.05rem var(--body); }
+.icon-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--brass); background: transparent; color: var(--brass); font: 700 1.3rem/1 var(--body); display: grid; place-items: center; padding: 0; }
+/* The touch area reaches 7px past the visible circle (the two buttons sit 14px apart, so they never overlap). */
+.icon-btn::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; }
+.titlebtns { gap: 14px !important; }
 .stats { display: flex; gap: 6px; flex: 0 1 auto; min-width: 0; }
 .stat { white-space: nowrap; background: var(--felt-2); border-radius: 10px; padding: 3px 8px; display: flex; align-items: baseline; gap: 6px; }
 .stat b { font-family: var(--display); font-size: 1.15rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
@@ -161,6 +192,7 @@ body {
 .card.sel { border-color: var(--sel); box-shadow: 0 0 0 5px var(--sel); }
 .card.glow { box-shadow: 0 0 0 4px var(--good); }
 .card.rest { opacity: .7; }
+.card.rest.sel, .card.rest.glow, .card.rest.target { opacity: 1; }
 /* Dragging: the card follows the finger; the spot it left is faded; the card under the finger is ringed. */
 .card.lifted { opacity: .3; }
 /* While dragging, every card you could drop on grows; the one you're nearest grows most. */
@@ -192,6 +224,7 @@ body {
 .panel p { margin: 0 0 14px; font-size: 1.05rem; }
 .panel .btn { min-width: 150px; padding: 11px 16px; }
 .panel .row { display: flex; gap: 10px; flex-wrap: wrap; }
+.version { margin: 14px 0 0 !important; font-size: .85rem !important; color: var(--muted); font-variant-numeric: tabular-nums; }
 .review { margin-top: 16px; border-top: 1px solid #2f5a44; padding-top: 12px; }
 .review h4 { margin: 0 0 6px; font-family: var(--display); font-size: 1.1rem; color: var(--ink); }
 .review ol { margin: 0; padding-left: 22px; line-height: 1.45; color: var(--muted); }
@@ -200,6 +233,19 @@ body {
 </style>
 </head>
 <body>
+
+<div id="intro" aria-hidden="true">
+  <div class="fan">
+    <div class="ic ic1"><b>6</b><i>♥&#xFE0E;</i></div>
+    <div class="ic ic2"><b>7</b><i>♠&#xFE0E;</i></div>
+    <div class="ic ic3"><b>K</b><i>♦&#xFE0E;</i></div>
+    <div class="ic ic4"><b>Q</b><i>♣&#xFE0E;</i></div>
+    <div class="ic ic5"><b>A</b><i>♥&#xFE0E;</i></div>
+  </div>
+  <h1 class="iname">Ophelia</h1>
+  <p class="itag">Grandma's game of thirteens</p>
+  <p class="iver vtext"></p>
+</div>
 
 <header class="title">
     <h1>Ophelia</h1>
@@ -264,6 +310,7 @@ body {
         <label><input type="radio" name="screen" value="portrait"><span>Upright</span></label>
       </div>
     </div>
+    <p class="version">Ophelia <span class="vtext"></span></p>
   </div>
 </div>
 
@@ -523,6 +570,15 @@ function lineHasMove() {
 }
 
 // Two cards: tapped one after the other, or one dragged onto the other.
+// Whether two cards may be paired at all: your card with the top or bottom card, or two line
+// cards that are the top and bottom, or side by side at one end.
+function canPair(a, b) {
+  if (a === b) return false;
+  const idx = [a, b].filter(x => x !== "hand");
+  if (idx.length === 1) { const n = line.length; return idx[0] === 0 || idx[0] === n - 1; }
+  return fromEnds(idx);
+}
+
 function tryPair(a, b) {
   sel = []; glow.clear();
   const A = cardOf(a), B = cardOf(b);
@@ -588,7 +644,7 @@ function onCard(el, key) {
       const r = el.getBoundingClientRect();
       // Measure the drop targets before they grow, so aiming matches where they sit.
       const targets = [...document.querySelectorAll("[data-key]")]
-        .filter(c => c !== el)
+        .filter(c => c !== el && canPair(key, c.dataset.key === "hand" ? "hand" : +c.dataset.key))
         .map(c => ({ el: c, key: c.dataset.key === "hand" ? "hand" : +c.dataset.key, r: c.getBoundingClientRect() }));
       const ghost = el.cloneNode(true);
       ghost.classList.remove("sel", "glow", "flip", "shake", "target", "over");
@@ -761,7 +817,9 @@ function render() {
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
     s.appendChild(t);
-    if (i <= 1 || i >= n - 2) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
+    // The top and bottom cards are the ones your card can go with. The card next to each is
+    // still playable, but only together with its end card, so it's shown dimmed like the rest.
+    if (i <= 1 || i >= n - 2) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "rest") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
     else s.appendChild(cardEl(c, "rest"));
     L.appendChild(s);
   });
@@ -782,7 +840,12 @@ onTap($("endLook"), () => { $("endScreen").hidden = true; });
 onTap($("helpBtn"), () => { $("help").hidden = false; });
 onTap($("helpClose"), () => { $("help").hidden = true; });
 onTap($("helpBack"), () => { $("help").hidden = true; });
-$("help").addEventListener("click", e => { if (e.target === $("help")) $("help").hidden = true; });
+// Tapping the dark area around a panel closes it, but not the leftover click from the tap that
+// just opened it, which lands on that same dark area a moment later.
+const backdropTap = id => $(id).addEventListener("click", e => {
+  if (e.target === $(id) && Date.now() - lastTouchTap > 800) $(id).hidden = true;
+});
+backdropTap("help");
 // Called by the phone's Back button. Returns true when it closed something.
 $("optReal").checked = opts.real;
 $("optTally").checked = opts.tally;
@@ -799,7 +862,7 @@ addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setT
 $("optReal").addEventListener("change", e => { opts.real = e.target.checked; saveOpts(); alertDue = true; render(); });
 onTap($("setBtn"), () => { $("settings").hidden = false; });
 onTap($("setBack"), () => { $("settings").hidden = true; });
-$("settings").addEventListener("click", e => { if (e.target === $("settings")) $("settings").hidden = true; });
+backdropTap("settings");
 window.handleBack = () => {
   if (!$("settings").hidden) { $("settings").hidden = true; return true; }
   if (!$("help").hidden) { $("help").hidden = true; return true; }
@@ -807,6 +870,28 @@ window.handleBack = () => {
   return false;
 };
 newGame();
+
+// Version number, from the app (e.g. "v1.0.26"); in a plain browser there is none to show.
+(() => {
+  let v = "";
+  try { if (window.Android && Android.versionName) v = "v" + Android.versionName(); } catch (e) {}
+  document.querySelectorAll(".vtext").forEach(el => { el.textContent = v; });
+})();
+
+// Play the opening once per launch, then fade into the table. A tap skips it.
+(() => {
+  const intro = $("intro");
+  let done = false;
+  const finish = () => {
+    if (done) return; done = true;
+    intro.classList.add("out");
+    setTimeout(() => intro.remove(), 500);
+  };
+  intro.addEventListener("pointerdown", finish);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  requestAnimationFrame(() => intro.classList.add("play"));
+  setTimeout(finish, reduce ? 900 : 2300);
+})();
 </script>
 </body>
 </html>
