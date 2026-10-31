@@ -23,14 +23,52 @@ The ⚙ button has these settings: **Real deck** turns off every buzz, glow and 
 
 ## Getting the app
 
-Every push to `main` builds the app on GitHub. This link always downloads the newest build:
+Every push to `main` builds the app on GitHub. This link always downloads the newest sideload build:
 
 **https://github.com/randaladams/Ophelia/releases/latest/download/Ophelia.apk**
 
-Open it on your Android phone, then open the downloaded file to install. Android will ask you to allow installing apps from your browser or file manager the first time.
+Open it on your Android phone or tablet, then open the downloaded file to install. Android will ask you to allow installing apps from your browser or file manager the first time.
+
+## App details
+
+- Package name: `com.adamselite.ophelia`
+- Runs on Android 8.0 (API 26) and newer, phones and tablets.
+- Targets API 36, as Google Play requires for new apps and updates since August 31, 2026. Compiled against API 37.
+- No ads.
+
+## Builds
+
+`.github/workflows/build.yml` runs on every push and pull request:
+
+1. Validates the Gradle wrapper.
+2. Builds a release APK signed with the sideload test key and publishes it as a GitHub release. The version code is the GitHub run number, so each build installs over the last.
+3. If the Play upload key secrets exist, also builds a signed `.aab` for Google Play and keeps it with the run as the `Ophelia-play-bundle` artifact.
+
+Any Gradle deprecation warning, any deprecated Java or Android API, and any call too new for the minimum Android version (lint `NewApi`) fails the build.
+
+`.github/workflows/refresh-wrapper.yml` regenerates the wrapper jar and scripts whenever the wrapper version changes, so they always match. `.github/dependabot.yml` proposes updates to Gradle, the Android plugin, libraries and GitHub Actions every week.
+
+### Signing keys
+
+The **Play upload key** is never committed. Add it in the repository's Settings > Secrets and variables > Actions:
+
+| Secret | Value |
+|---|---|
+| `PLAY_UPLOAD_KEYSTORE_BASE64` | The upload keystore file, base64-encoded (`base64 -w0 upload.jks`) |
+| `PLAY_UPLOAD_KEYSTORE_PASSWORD` | The keystore password |
+| `PLAY_UPLOAD_KEY_ALIAS` | The key alias |
+| `PLAY_UPLOAD_KEY_PASSWORD` | The key password |
+
+Create the upload key once, on your own computer, and keep a backup:
+
+```
+keytool -genkeypair -keystore upload.jks -alias upload -keyalg RSA -keysize 4096 -validity 10000
+```
+
+The **sideload test key** (`app/sideload-test.p12`) is committed on purpose so every sideload build installs over the last one. It is only for test builds and is not used for Google Play. To replace it with a private one, add `SIDELOAD_KEYSTORE_BASE64`, `SIDELOAD_KEYSTORE_PASSWORD`, `SIDELOAD_KEY_ALIAS` and `SIDELOAD_KEY_PASSWORD` secrets.
 
 ## Project layout
 
 - `app/src/main/assets/index.html` holds the whole game: the rules, the table and the cards.
-- `app/src/main/java/com/randaladams/ophelia/MainActivity.java` shows the game full screen in landscape and handles the vibration.
-- `.github/workflows/build.yml` builds the APK and publishes it as a release.
+- `app/src/main/java/com/adamselite/ophelia/MainActivity.java` shows the game full screen, handles Back, vibration and screen turning.
+- `gradle/libs.versions.toml` lists every plugin and library version in one place.
