@@ -163,7 +163,9 @@ body {
 .card.rest { opacity: .7; }
 /* Dragging: the card follows the finger; the spot it left is faded; the card under the finger is ringed. */
 .card.lifted { opacity: .3; }
-.card.over { box-shadow: 0 0 0 5px var(--sel); }
+/* While dragging, every card you could drop on grows; the one you're nearest grows most. */
+.card.target { transform: scale(1.2); z-index: 3; box-shadow: 0 0 0 3px rgba(121,182,242,.55), 0 6px 14px rgba(0,0,0,.45); transition: transform .1s ease-out; }
+.card.target.over { transform: scale(1.45); z-index: 4; box-shadow: 0 0 0 5px var(--sel), 0 10px 22px rgba(0,0,0,.5); }
 .ghost { position: fixed; z-index: 20; pointer-events: none; margin: 0; box-shadow: 0 14px 28px rgba(0,0,0,.5); opacity: .95; }
 .card.dim { opacity: .55; }
 .card.back { background: repeating-linear-gradient(45deg, var(--brass) 0 7px, #a77a22 7px 14px); border: 4px solid var(--card); }
@@ -282,6 +284,8 @@ body {
       <li>The card count under the line shows every card: bright = still in the deck, gold outline = in the line, blue = your card, dot = on the pile. Pile and Left count each suit; the bottom row counts how many of each rank are left.</li>
       <li>Turn the phone upright to see more of the line at once.</li>
       <li>Tap ⚙ for Real deck (no alerts), the card count, and how the screen turns.</li>
+      <li>When you drag a card, every card you can drop it on grows. Letting go near one is enough.</li>
+      <li>When the deck runs out, clear anything left at the ends, then tap Finish game.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -417,16 +421,35 @@ function clearGroup(keys) {
   if (line.length <= 4) expanded = false;
   const names = cards.map(nm).join(" + ");
   const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
-  if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(); }
+  if (usedHand) nextCard(done); else { say(done.trim(), "ok"); checkEnd(done); }
   render();
 }
 
-function checkEnd() {
+// When the deck is empty, the game ends by itself only when nothing is left to play.
+// Otherwise it says so and the big button becomes Finish game. In Real deck mode it never
+// ends by itself while cards remain, since that would hint that a match is still waiting.
+function checkEnd(prefix = "") {
   if (over || deck.length || hand) return;
+  if (line.length === 0) { endGame("win"); return; }
+  if (!opts.real && !lineHasMove()) { endGame("lose"); return; }
+  say(prefix + (opts.real
+    ? "The deck is empty. Clear anything you can at the ends, then tap Finish game."
+    : "The deck is empty, but a pair or 13 is still waiting at the ends. Clear it, or tap Finish game."), "ok");
+}
+function endGame(res) {
+  over = true; result = res; rec.g++; if (res === "win") rec.w++; saveRec();
   const n = line.length;
-  const movesLeft = lineHasMove();
-  if (n === 0) { over = true; result = "win"; rec.w++; rec.g++; saveRec(); say("The line is clear. You won!", "win"); showEnd(); }
-  else if (!movesLeft) { over = true; result = "lose"; rec.g++; saveRec(); say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose"); showEnd(); }
+  if (res === "win") say("The line is clear. You won!", "win");
+  else say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose");
+  showEnd();
+}
+function finishGame() {
+  if (over || hand || deck.length) return;
+  snap();
+  const m = availableMatches();
+  if (m.length) misses.push({ kind: "miss", text: `<b>At the end:</b> ${m.map(describe).join("; and ")}.` });
+  endGame(line.length ? "lose" : "win");
+  render();
 }
 function showEnd() {
   const win = result === "win";
@@ -449,7 +472,7 @@ function draw(prefix) {
   say(prefix + (hand.rank === 13 ? "You drew a King. Tap it to send it to the pile." : `You drew ${article(hand)} ${nm(hand)}.`));
 }
 function nextCard(prefix) {
-  if (deck.length) draw(prefix); else { say(prefix.trim(), "ok"); checkEnd(); }
+  if (deck.length) draw(prefix); else { say(prefix.trim(), "ok"); checkEnd(prefix); }
 }
 
 // Before a card is laid down, note any match that was on the table, for the review at the end.
@@ -530,13 +553,26 @@ function tap(k) {
 }
 
 // Cards respond to a tap, or to being dragged onto another card.
-// A drag that ends back on the same card, or a short slide, still counts as a tap.
+// While dragging: the card floats just above your finger so you can see where it's going,
+// every card it could be dropped on grows, and letting go near one counts (it doesn't have
+// to be exactly on it). A drag that ends back on the same card still counts as a tap.
+const SNAP = 72;  // how close to a card (in pixels) a drop still lands on it
 let drag = null;
-const keyOf = el => { const k = el && el.dataset ? el.dataset.key : undefined; return k === undefined ? undefined : k === "hand" ? "hand" : +k; };
-function keyAt(x, y) {
-  const el = document.elementFromPoint(x, y);
-  const card = el && el.closest ? el.closest("[data-key]") : null;
-  return card ? { key: keyOf(card), el: card } : null;
+function nearestTarget(x, y) {
+  let best = null, bestD = Infinity;
+  for (const t of drag.targets) {
+    const dx = Math.max(t.r.left - x, 0, x - t.r.right), dy = Math.max(t.r.top - y, 0, y - t.r.bottom);
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = t; }
+  }
+  return best && bestD <= SNAP ? best : null;
+}
+function endDrag() {
+  if (!drag) return;
+  drag.ghost.remove();
+  drag.el.classList.remove("lifted");
+  drag.targets.forEach(t => t.el.classList.remove("target", "over"));
+  drag = null;
 }
 function onCard(el, key) {
   let start = null;
@@ -550,19 +586,28 @@ function onCard(el, key) {
     const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
     if (!drag && moved > 18 && !(key === "hand" && hand && hand.rank === 13)) {
       const r = el.getBoundingClientRect();
+      // Measure the drop targets before they grow, so aiming matches where they sit.
+      const targets = [...document.querySelectorAll("[data-key]")]
+        .filter(c => c !== el)
+        .map(c => ({ el: c, key: c.dataset.key === "hand" ? "hand" : +c.dataset.key, r: c.getBoundingClientRect() }));
       const ghost = el.cloneNode(true);
-      ghost.classList.remove("sel", "glow", "flip", "shake");
+      ghost.classList.remove("sel", "glow", "flip", "shake", "target", "over");
       ghost.classList.add("ghost");
-      Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+      Object.assign(ghost.style, { left: "0px", top: "0px", width: r.width + "px", height: r.height + "px" });
       document.body.appendChild(ghost);
       el.classList.add("lifted");
-      drag = { key, el, ghost, x0: start.x, y0: start.y, over: null };
+      targets.forEach(t => t.el.classList.add("target"));
+      drag = { key, el, ghost, w: r.width, h: r.height, src: r, targets, over: null };
+      sel = [];
       if (!opts.real) say(`Drop the ${nm(cardOf(key))} on a card that makes 13 or matches it.`);
     }
     if (drag) {
-      drag.ghost.style.transform = `translate(${e.clientX - drag.x0}px, ${e.clientY - drag.y0}px) scale(1.06)`;
-      const hit = keyAt(e.clientX, e.clientY);
-      const target = hit && hit.key !== key ? hit.el : null;
+      // Float the card above the fingertip, so the finger doesn't hide the target.
+      const gx = Math.min(Math.max(4, e.clientX - drag.w / 2), innerWidth - drag.w - 4);
+      const gy = Math.max(4, e.clientY - drag.h - 14);
+      drag.ghost.style.transform = `translate(${gx}px, ${gy}px)`;
+      const t = nearestTarget(e.clientX, e.clientY);
+      const target = t ? t.el : null;
       if (drag.over !== target) {
         if (drag.over) drag.over.classList.remove("over");
         if (target) target.classList.add("over");
@@ -576,12 +621,12 @@ function onCard(el, key) {
     start = null;
     lastTouchTap = Date.now();
     if (drag) {
-      const d = drag; drag = null;
-      d.ghost.remove(); el.classList.remove("lifted");
-      if (d.over) d.over.classList.remove("over");
-      const hit = keyAt(e.clientX, e.clientY);
-      if (hit && hit.key !== key) { tryPair(key, hit.key); return; }
-      if (hit && hit.key === key) { tap(key); return; }
+      const t = nearestTarget(e.clientX, e.clientY);
+      const s = drag.src, pad = 16;
+      const onSelf = e.clientX >= s.left - pad && e.clientX <= s.right + pad && e.clientY >= s.top - pad && e.clientY <= s.bottom + pad;
+      endDrag();
+      if (t) { tryPair(key, t.key); return; }
+      if (onSelf) { tap(key); return; }
       say(opts.real ? "Put back." : "Put back. Drop it on another card to pair them.");
       render(); return;
     }
@@ -590,10 +635,7 @@ function onCard(el, key) {
     if (!inside && moved > 40) return;
     tap(key);
   });
-  el.addEventListener("pointercancel", () => {
-    start = null;
-    if (drag) { drag.ghost.remove(); el.classList.remove("lifted"); if (drag.over) drag.over.classList.remove("over"); drag = null; }
-  });
+  el.addEventListener("pointercancel", () => { start = null; endDrag(); });
   el.addEventListener("click", () => { if (Date.now() - lastTouchTap > 800) tap(key); });
 }
 
@@ -725,11 +767,13 @@ function render() {
   });
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
 
-  $("layBtn").disabled = !hand || hand.rank === 13 || over;
+  const finishing = !over && !hand && !deck.length;
+  $("layBtn").textContent = finishing ? "Finish game" : "Lay down";
+  $("layBtn").disabled = !finishing && (!hand || hand.rank === 13 || over);
   $("undoBtn").disabled = !hist.length;
 }
 
-onTap($("layBtn"), lay);
+onTap($("layBtn"), () => (!hand && !deck.length ? finishGame() : lay()));
 onTap($("midBtn"), () => { expanded = !expanded; render(); });
 onTap($("undoBtn"), undo);
 onTap($("newBtn"), newGame);
