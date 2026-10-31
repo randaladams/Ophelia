@@ -160,7 +160,11 @@ body {
 .card.live { border-color: var(--brass); }
 .card.sel { border-color: var(--sel); box-shadow: 0 0 0 5px var(--sel); }
 .card.glow { box-shadow: 0 0 0 4px var(--good); }
-.card.cglow { box-shadow: 0 0 0 4px var(--sel); }
+.card.rest { opacity: .7; }
+/* Dragging: the card follows the finger; the spot it left is faded; the card under the finger is ringed. */
+.card.lifted { opacity: .3; }
+.card.over { box-shadow: 0 0 0 5px var(--sel); }
+.ghost { position: fixed; z-index: 20; pointer-events: none; margin: 0; box-shadow: 0 14px 28px rgba(0,0,0,.5); opacity: .95; }
 .card.dim { opacity: .55; }
 .card.back { background: repeating-linear-gradient(45deg, var(--brass) 0 7px, #a77a22 7px 14px); border: 4px solid var(--card); }
 .card.blank { background: transparent; border: 2px dashed #3d6b53; box-shadow: none; }
@@ -172,8 +176,6 @@ body {
   @keyframes flip { from { transform: translateY(-8px); opacity: .3; } to { transform: none; opacity: 1; } }
   .glow { animation: glow 1s ease-in-out 3; }
   @keyframes glow { 50% { box-shadow: 0 0 0 9px rgba(116,211,148,.35); } }
-  .cglow { animation: cglow 1s ease-in-out 3; }
-  @keyframes cglow { 50% { box-shadow: 0 0 0 9px rgba(121,182,242,.35); } }
   .shake { animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 }
@@ -193,8 +195,6 @@ body {
 .review ol { margin: 0; padding-left: 22px; line-height: 1.45; color: var(--muted); }
 .review li { margin-bottom: 6px; }
 .review li b { color: var(--ink); }
-.review li.optional { color: #8fb0c8; }
-.review h4.opt { margin-top: 12px; font-size: 1rem; color: #8fb0c8; }
 </style>
 </head>
 <body>
@@ -249,11 +249,6 @@ body {
       <span class="sw" aria-hidden="true"></span>
       <span><b>Real deck</b>No buzzes, no glows and no adding up for you. Spot every match yourself, just like at the kitchen table.</span>
     </label>
-    <label class="toggle" for="optClassic">
-      <input type="checkbox" id="optClassic">
-      <span class="sw" aria-hidden="true"></span>
-      <span><b>Classic rules</b>Only pairs and two-card 13s. No 13s made from three or more cards.</span>
-    </label>
     <label class="toggle" for="optTally">
       <input type="checkbox" id="optTally">
       <span class="sw" aria-hidden="true"></span>
@@ -279,16 +274,14 @@ body {
     <ul>
       <li>Ace 1, number cards face value, Jack 11, Queen 12, King 13.</li>
       <li>A new card turns over by itself. A King is 13 alone: tap it to send it to the pile.</li>
-      <li>If your card makes 13 with, or matches, the top or bottom card of the line, tap both to clear them.</li>
+      <li>If your card makes 13 with, or matches, the top or bottom card of the line, tap both to clear them, or drag one onto the other.</li>
       <li>If it fits nowhere, tap Lay down. It goes at the bottom of the line.</li>
       <li>The top and bottom cards together, or the two cards side by side at either end, also clear when they make 13 or a pair.</li>
-      <li>You may also add up three or more cards to make 13: your card and cards taken off the top and bottom ends of the line, with no gaps. Tap them one at a time. It's allowed, but it leaves other cards without partners, so use it with care.</li>
       <li>Tap the stack in the middle to see every card in the line.</li>
       <li>When a match is waiting, the phone buzzes twice and the cards glow green.</li>
-      <li>When only a three-or-more-card 13 is possible, the phone gives one long buzz and the cards glow blue. Taking it is your choice.</li>
       <li>The card count under the line shows every card: bright = still in the deck, gold outline = in the line, blue = your card, dot = on the pile. Pile and Left count each suit; the bottom row counts how many of each rank are left.</li>
       <li>Turn the phone upright to see more of the line at once.</li>
-      <li>Tap ⚙ for Real deck (no alerts), Classic rules (no three-card 13s), the card count, and how the screen turns.</li>
+      <li>Tap ⚙ for Real deck (no alerts), the card count, and how the screen turns.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
@@ -306,8 +299,6 @@ body {
     <div class="review">
       <h4 id="reviewTitle"></h4>
       <ol id="reviewList"></ol>
-      <h4 class="opt" id="optTitle">Optional 13s you passed up</h4>
-      <ol id="optList"></ol>
     </div>
   </div>
 </div>
@@ -320,7 +311,7 @@ const $ = id => document.getElementById(id);
 let opts = { real: false, classic: false, tally: true, screen: "auto" };
 try { Object.assign(opts, JSON.parse(localStorage.getItem("ophelia-settings")) || {}); } catch (e) {}
 function saveOpts() { try { localStorage.setItem("ophelia-settings", JSON.stringify(opts)); } catch (e) {} }
-let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], misses = [], glow = new Set(), cglow = new Set(), alertDue = false;
+let expanded = false, deck, line, pile, hand, sel = [], over, result, flipNext, hist = [], misses = [], glow = new Set(), alertDue = false;
 
 let rec = { w: 0, g: 0 };
 try { const s = JSON.parse(localStorage.getItem("ophelia-record")); if (s) rec = s; } catch (e) {}
@@ -359,12 +350,6 @@ function onTap(el, fn) {
 }
 document.addEventListener("contextmenu", e => e.preventDefault());
 
-function buzzLong() {
-  try {
-    if (window.Android && Android.vibrateLong) Android.vibrateLong();
-    else if (navigator.vibrate) navigator.vibrate(260);
-  } catch (e) {}
-}
 function buzz() {
   try {
     if (window.Android && Android.vibrate) Android.vibrate();
@@ -376,7 +361,7 @@ function newGame() {
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; misses = []; glow.clear(); cglow.clear();
+  line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; misses = []; glow.clear();
   $("endScreen").hidden = true;
   draw("");
   render();
@@ -388,7 +373,7 @@ function undo() {
   if (over) { rec.g--; if (result === "win") rec.w--; saveRec(); }
   const s = JSON.parse(hist.pop());
   deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result; misses = s.misses || [];
-  sel = []; glow.clear(); cglow.clear(); alertDue = false;
+  sel = []; glow.clear(); alertDue = false;
   $("endScreen").hidden = true;
   say("Took back your last move.");
   render();
@@ -408,47 +393,15 @@ function availableMatches() {
 function runAlert() {
   if (!alertDue) return;
   alertDue = false;
-  glow = new Set(); cglow = new Set();
+  glow = new Set();
   if (opts.real) return;
   const m = availableMatches();
   glow = new Set(m.flat());
-  if (m.length) { buzz(); return; }
-  if (opts.classic) return;
-  const combo = bestCombo();
-  if (combo) { cglow = new Set(combo); buzzLong(); }
-}
-
-// The smallest group of 3+ cards that makes 13: optionally your card, plus runs off the top and bottom.
-function bestCombo() {
-  const n = line.length;
-  const useHand = hand && hand.rank !== 13 ? [1, 0] : [0];
-  let best = null;
-  for (const h of useHand) {
-    const base = h ? hand.rank : 0;
-    let top = 0;
-    for (let k = 0; k <= n; k++) {
-      if (k > 0) top += line[k - 1].rank;
-      if (base + top > 13) break;
-      let bot = 0;
-      for (let j = 0; k + j <= n; j++) {
-        if (j > 0) bot += line[n - j].rank;
-        const total = base + top + bot, count = h + k + j;
-        if (total > 13) break;
-        if (total === 13 && count >= 3 && (!best || count < best.length)) {
-          const keys = [];
-          if (h) keys.push("hand");
-          for (let i = 0; i < k; i++) keys.push(i);
-          for (let i = n - j; i < n; i++) keys.push(i);
-          best = keys;
-        }
-      }
-    }
-  }
-  return best;
+  if (m.length) buzz();
 }
 
 function kingToPile() {
-  snap(); pile++; hand = null; sel = []; glow.clear(); cglow.clear();
+  snap(); pile++; hand = null; sel = []; glow.clear();
   nextCard("King to the pile. "); render();
 }
 
@@ -460,7 +413,7 @@ function clearGroup(keys) {
   snap();
   idxs.sort((x, y) => y - x).forEach(i => line.splice(i, 1));
   if (usedHand) hand = null;
-  pile += cards.length; sel = []; alertDue = true; glow.clear(); cglow.clear();
+  pile += cards.length; sel = []; alertDue = true; glow.clear();
   if (line.length <= 4) expanded = false;
   const names = cards.map(nm).join(" + ");
   const done = isPair ? `${names} make a pair. To the pile. ` : `${names} make 13. To the pile. `;
@@ -481,16 +434,12 @@ function showEnd() {
   $("endText").textContent = win
     ? `Every card made it to the pile. That's ${rec.w} win${rec.w === 1 ? "" : "s"} in ${rec.g} game${rec.g === 1 ? "" : "s"}.`
     : `${line.length} card${line.length === 1 ? " was" : "s were"} left in the line. You've won ${rec.w} of ${rec.g} games.`;
-  const real = misses.filter(x => x.kind === "miss"), optional = misses.filter(x => x.kind === "optional");
+  const real = misses.filter(x => x.kind === "miss");
   $("reviewTitle").textContent = real.length
     ? `You missed ${real.length} match${real.length === 1 ? "" : "es"}`
     : "You didn't miss a single match";
   $("reviewList").innerHTML = real.map(x => `<li>${x.text}</li>`).join("");
   $("reviewList").hidden = !real.length;
-  const shown = optional.slice(0, 5);
-  $("optList").innerHTML = shown.map(x => `<li class="optional">${x.text}</li>`).join("")
-    + (optional.length > shown.length ? `<li class="optional">…and ${optional.length - shown.length} more.</li>` : "");
-  $("optTitle").hidden = $("optList").hidden = !optional.length;
   setTimeout(() => { if (over) $("endScreen").hidden = false; }, 700);
 }
 
@@ -517,22 +466,12 @@ function noteMisses() {
   const m = availableMatches();
   if (m.length) {
     misses.push({ kind: "miss", text: `<b>${when}:</b> you laid down ${named(hand)}, but ${m.map(describe).join("; and ")}.` });
-    return;
-  }
-  if (opts.classic) return;
-  const combo = bestCombo();
-  if (combo) {
-    // Note each optional 13 only once, not again on every later card while it sits there.
-    const sig = combo.filter(k => k !== "hand").map(k => line[k].rank + line[k].suit).join(",") + (combo.includes("hand") ? "+hand" : "");
-    if (misses.some(x => x.sig === sig && !sig.endsWith("+hand"))) return;
-    const cards = combo.map(cardOf).map(nm).join(" + ");
-    misses.push({ kind: "optional", sig, text: `<b>${when}:</b> you laid down ${named(hand)} when ${cards} could have made 13.` });
   }
 }
 
 function lay() {
   if (over || !hand || hand.rank === 13) return;
-  glow.clear(); cglow.clear(); snap();
+  glow.clear(); snap();
   noteMisses();
   line.push(hand);
   const laid = nm(hand);
@@ -552,59 +491,110 @@ function fromEnds(idxs) {
   return k + j === S.size;
 }
 
-// Any group at the ends of the line that can still be cleared once the deck is out.
+// Any pair or 13 at the ends of the line that can still be cleared once the deck is out.
 function lineHasMove() {
   const n = line.length;
   if (n < 2) return false;
-  if (line[0].rank === line[n - 1].rank) return true;
-  if (n >= 3 && (line[0].rank === line[1].rank || line[n - 2].rank === line[n - 1].rank)) return true;
-  let top = 0;
-  for (let k = 0; k <= n; k++) {
-    if (k > 0) top += line[k - 1].rank;
-    if (top > 13) break;
-    let bot = 0;
-    for (let j = 0; k + j <= n; j++) {
-      if (j > 0) bot += line[n - j].rank;
-      if (top + bot > 13) break;
-      if (top + bot === 13 && k + j >= 2 && !(opts.classic && k + j > 2)) return true;
-    }
-  }
-  return false;
+  if (match(line[0], line[n - 1])) return true;
+  return n >= 3 && (match(line[0], line[1]) || match(line[n - 2], line[n - 1]));
 }
 
-function tap(k, el) {
-  if (over) return;
-  glow.clear(); cglow.clear();
-  const c = cardOf(k);
-  if (k === "hand" && c.rank === 13) { kingToPile(); return; }
-  sel = isSel(k) ? sel.filter(x => x !== k) : [...sel, k];
-  if (!sel.length) { say("Nothing picked."); render(); return; }
-  const cards = sel.map(cardOf);
-  const total = cards.reduce((t, x) => t + x.rank, 0);
-  const names = cards.map(nm).join(" + ");
-  const isPair = cards.length === 2 && cards[0].rank === cards[1].rank;
+// Two cards: tapped one after the other, or one dragged onto the other.
+function tryPair(a, b) {
+  sel = []; glow.clear();
+  const A = cardOf(a), B = cardOf(b);
+  if (!A || !B) { render(); return; }
+  const handIn = a === "hand" || b === "hand";
+  if (!fromEnds([a, b].filter(x => x !== "hand"))) {
+    say(handIn ? "Your card can only go with the top or bottom card." : "Those two aren't side by side at an end of the line.", "nope");
+    render(); return;
+  }
+  if (match(A, B)) { clearGroup([a, b]); return; }
+  say(opts.real ? `${nm(A)} and ${nm(B)} don't match.` : `${nm(A)} and ${nm(B)} make ${A.rank + B.rank}, not 13.`, "nope");
+  render();
+  const again = b === "hand" ? $("handSlot").firstChild : document.querySelector(`#line [data-key="${b}"]`);
+  if (again) again.classList.add("shake");
+}
 
-  if (isPair || (total === 13 && cards.length >= 2)) {
-    const idxs = sel.filter(x => x !== "hand");
-    const usedHand = sel.includes("hand");
-    if (!fromEnds(idxs)) {
-      sel = [];
-      say("Cards from the line have to come off the ends, with no gaps.", "nope");
+function tap(k) {
+  if (over) return;
+  glow.clear();
+  const c = cardOf(k);
+  if (!c) return;
+  if (k === "hand" && c.rank === 13) { kingToPile(); return; }
+  if (isSel(k)) { sel = []; say("Nothing picked."); render(); return; }
+  if (sel.length) { tryPair(sel[0], k); return; }
+  sel = [k];
+  say(opts.real ? `${nm(c)} picked.` : `${nm(c)} picked. Tap or drag it onto a card that makes 13 or matches it.`);
+  render();
+}
+
+// Cards respond to a tap, or to being dragged onto another card.
+// A drag that ends back on the same card, or a short slide, still counts as a tap.
+let drag = null;
+const keyOf = el => { const k = el && el.dataset ? el.dataset.key : undefined; return k === undefined ? undefined : k === "hand" ? "hand" : +k; };
+function keyAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  const card = el && el.closest ? el.closest("[data-key]") : null;
+  return card ? { key: keyOf(card), el: card } : null;
+}
+function onCard(el, key) {
+  let start = null;
+  el.addEventListener("pointerdown", e => {
+    if (over) return;
+    start = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  el.addEventListener("pointermove", e => {
+    if (!start || e.pointerId !== start.id) return;
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    if (!drag && moved > 18 && !(key === "hand" && hand && hand.rank === 13)) {
+      const r = el.getBoundingClientRect();
+      const ghost = el.cloneNode(true);
+      ghost.classList.remove("sel", "glow", "flip", "shake");
+      ghost.classList.add("ghost");
+      Object.assign(ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+      document.body.appendChild(ghost);
+      el.classList.add("lifted");
+      drag = { key, el, ghost, x0: start.x, y0: start.y, over: null };
+      if (!opts.real) say(`Drop the ${nm(cardOf(key))} on a card that makes 13 or matches it.`);
+    }
+    if (drag) {
+      drag.ghost.style.transform = `translate(${e.clientX - drag.x0}px, ${e.clientY - drag.y0}px) scale(1.06)`;
+      const hit = keyAt(e.clientX, e.clientY);
+      const target = hit && hit.key !== key ? hit.el : null;
+      if (drag.over !== target) {
+        if (drag.over) drag.over.classList.remove("over");
+        if (target) target.classList.add("over");
+        drag.over = target;
+      }
+    }
+  });
+  el.addEventListener("pointerup", e => {
+    if (!start || e.pointerId !== start.id) return;
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    start = null;
+    lastTouchTap = Date.now();
+    if (drag) {
+      const d = drag; drag = null;
+      d.ghost.remove(); el.classList.remove("lifted");
+      if (d.over) d.over.classList.remove("over");
+      const hit = keyAt(e.clientX, e.clientY);
+      if (hit && hit.key !== key) { tryPair(key, hit.key); return; }
+      if (hit && hit.key === key) { tap(key); return; }
+      say(opts.real ? "Put back." : "Put back. Drop it on another card to pair them.");
       render(); return;
     }
-    clearGroup([...sel]);
-  } else if (total > 13 || (opts.classic && cards.length >= 2)) {
-    sel = [];
-    say(opts.real ? `${names} don't match.` : `${names} make ${total}, not 13.`, "nope");
-    render();
-    const again = k === "hand" ? $("handSlot").firstChild : el;
-    if (again) again.classList.add("shake");
-  } else {
-    if (opts.real) say(`${names} picked.`);
-    else if (cards.length === 1) say(opts.classic ? `${nm(c)} picked. Tap a card that makes 13 or matches it.` : `${nm(c)} picked. Tap more cards to make 13, or a matching card for a pair.`);
-    else say(`${names} = ${total}. Add ${13 - total} more to make 13.`);
-    render();
-  }
+    const r = el.getBoundingClientRect(), pad = 16;
+    const inside = e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+    if (!inside && moved > 40) return;
+    tap(key);
+  });
+  el.addEventListener("pointercancel", () => {
+    start = null;
+    if (drag) { drag.ghost.remove(); el.classList.remove("lifted"); if (drag.over) drag.over.classList.remove("over"); drag = null; }
+  });
+  el.addEventListener("click", () => { if (Date.now() - lastTouchTap > 800) tap(key); });
 }
 
 // How many cards fit in the line box at card height h, on wrapped rows.
@@ -664,7 +654,7 @@ function cardEl(c, cls, key) {
     d.innerHTML = `<span class="c1">${c.suit}</span><span class="mid">${r}</span><span class="c2">${c.suit}</span>`;
     d.setAttribute("aria-label", `${nm(c)} of ${c.name}`);
   }
-  if (key !== undefined) onTap(d, () => tap(key, d));
+  if (key !== undefined) { d.dataset.key = key; onCard(d, key); }
   return d;
 }
 
@@ -675,7 +665,7 @@ function render() {
   $("record").textContent = `${rec.w}/${rec.g}`;
 
   const hs = $("handSlot"); hs.innerHTML = "";
-  if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : cglow.has("hand") ? " cglow" : ""), "hand"));
+  if (hand) hs.appendChild(cardEl(hand, "small live" + (isSel("hand") ? " sel" : "") + (flipNext ? " flip" : "") + (glow.has("hand") ? " glow" : ""), "hand"));
   else hs.appendChild(cardEl(null, "small " + (deck.length ? "back" : "blank")));
   flipNext = false;
 
@@ -729,7 +719,8 @@ function render() {
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
     s.appendChild(t);
-    s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : cglow.has(i) ? " cglow" : ""), i));
+    if (i <= 1 || i >= n - 2) s.appendChild(cardEl(c, (isTop || isBot ? "live" : "") + (isSel(i) ? " sel" : "") + (glow.has(i) ? " glow" : ""), i));
+    else s.appendChild(cardEl(c, "rest"));
     L.appendChild(s);
   });
   $("lineCount").textContent = `${n} card${n === 1 ? "" : "s"}`;
@@ -761,9 +752,7 @@ applyScreen();
 // Turning the phone resizes the page; lay the table out again.
 let resizeTimer = 0;
 addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 60); });
-$("optClassic").checked = opts.classic;
 $("optReal").addEventListener("change", e => { opts.real = e.target.checked; saveOpts(); alertDue = true; render(); });
-$("optClassic").addEventListener("change", e => { opts.classic = e.target.checked; saveOpts(); alertDue = true; render(); });
 onTap($("setBtn"), () => { $("settings").hidden = false; });
 onTap($("setBack"), () => { $("settings").hidden = true; });
 $("settings").addEventListener("click", e => { if (e.target === $("settings")) $("settings").hidden = true; });
