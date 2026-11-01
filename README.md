@@ -6,14 +6,14 @@ A one-deck solitaire card game, as taught by Grandma.
 
 - Ace counts 1, number cards count their face value, Jack 11, Queen 12, King 13.
 - Turn over one card at a time. A King is 13 on its own and goes straight to the pile.
-- If the card makes 13 with, or matches, the top or bottom card of the line, both go to the pile. Drag one onto the other, or tap the line card and then your card. While you drag, every card you can drop on grows, and letting go near one is enough.
+- If the card makes 13 with, or matches, the top or bottom card of the line, both go to the pile. Drag one onto the other, or tap the line card and then your card. While you drag, the card it matches grows (in Real deck mode, every card it could legally go on grows, so there's no hint), and letting go near it is enough.
 - Otherwise tap your card (or the message beside it) to lay it at the bottom of the line. Cards are never laid at the top. Tap a King to send it to the pile.
 - Whenever the top and bottom cards, or the two cards side by side at either end, make 13 or a pair, they go to the pile too. This can chain.
 - You win if the line is empty when the deck runs out. When the deck is empty and matches are still waiting at the ends, clear them, then tap the **Finish game** card that takes your card's place.
 
 When a match is waiting, the phone buzzes twice and the cards glow green. The game plays sideways or upright.
 
-When a game ends, the results screen lists any matches you missed along the way.
+When a game ends, the results screen lists any matches you missed along the way. Tap anywhere on it for a new game.
 
 Under the line, a **card count** chart shows every card: still in the deck, in the line, in your hand, or on the pile, with pile and left counts for each suit and a count of what's left of each rank.
 

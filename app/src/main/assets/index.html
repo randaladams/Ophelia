@@ -232,6 +232,7 @@ body {
 .review ol { margin: 0; padding-left: 22px; line-height: 1.45; color: var(--muted); }
 .review li { margin-bottom: 6px; }
 .review li b { color: var(--ink); }
+.tapnew { margin: 14px 0 0 !important; text-align: center; color: var(--muted); font-size: .9rem !important; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -330,7 +331,7 @@ body {
       <li>The card count under the line shows every card: bright = still in the deck, gold outline = in the line, blue = your card, dot = on the pile. Pile and Left count each suit; the bottom row counts how many of each rank are left.</li>
       <li>Turn the phone upright to see more of the line at once.</li>
       <li>Tap ⚙ for Real deck (no alerts), the card count, and how the screen turns.</li>
-      <li>When you drag a card, every card you can drop it on grows. Letting go near one is enough.</li>
+      <li>When you drag a card, the card it matches grows. Letting go near it is enough. In Real deck mode, every card it could legally go on grows instead, so there's no hint.</li>
       <li>When the deck runs out, clear anything left at the ends, then tap Finish game.</li>
       <li>Win by emptying the line once the deck runs out.</li>
     </ul>
@@ -350,6 +351,7 @@ body {
       <h4 id="reviewTitle"></h4>
       <ol id="reviewList"></ol>
     </div>
+    <p class="tapnew">Tap anywhere for a new game</p>
   </div>
 </div>
 
@@ -509,7 +511,7 @@ function showEnd() {
     : "You didn't miss a single match";
   $("reviewList").innerHTML = real.map(x => `<li>${x.text}</li>`).join("");
   $("reviewList").hidden = !real.length;
-  setTimeout(() => { if (over) $("endScreen").hidden = false; }, 700);
+  setTimeout(() => { if (over) { $("endScreen").hidden = false; endShownAt = Date.now(); } }, 700);
 }
 
 function draw(prefix) {
@@ -647,7 +649,12 @@ function onCard(el, key) {
       const r = el.getBoundingClientRect();
       // Measure the drop targets before they grow, so aiming matches where they sit.
       const targets = [...document.querySelectorAll("[data-key]")]
-        .filter(c => c !== el && canPair(key, c.dataset.key === "hand" ? "hand" : +c.dataset.key))
+        .filter(c => {
+          const k = c.dataset.key === "hand" ? "hand" : +c.dataset.key;
+          // Only cards it can be dropped on: the right position, and (except in Real deck,
+          // which gives no hints) a real match, 13 or a pair.
+          return c !== el && canPair(key, k) && (opts.real || match(cardOf(key), cardOf(k)));
+        })
         .map(c => ({ el: c, key: c.dataset.key === "hand" ? "hand" : +c.dataset.key, r: c.getBoundingClientRect() }));
       const ghost = el.cloneNode(true);
       ghost.classList.remove("sel", "glow", "flip", "shake", "target", "over");
@@ -658,7 +665,9 @@ function onCard(el, key) {
       targets.forEach(t => t.el.classList.add("target"));
       drag = { key, el, ghost, w: r.width, h: r.height, src: r, targets, over: null };
       sel = [];
-      if (!opts.real) say(`Drop the ${nm(cardOf(key))} on a card that makes 13 or matches it.`);
+      if (!opts.real) say(targets.length
+        ? `Drop the ${nm(cardOf(key))} on the card that grew.`
+        : `Nothing at the ends goes with the ${nm(cardOf(key))}. Let go${key === "hand" ? ", then tap it to lay it down" : ""}.`);
     }
     if (drag) {
       // Float the card above the fingertip, so the finger doesn't hide the target.
@@ -686,6 +695,9 @@ function onCard(el, key) {
       endDrag();
       if (t) { tryPair(key, t.key); return; }
       if (onSelf) { tap(key); return; }
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const card = under && under.closest ? under.closest("[data-key]") : null;
+      if (card) { tryPair(key, card.dataset.key === "hand" ? "hand" : +card.dataset.key); return; }
       say(opts.real ? "Put back." : "Put back. Drop it on another card to pair them.");
       render(); return;
     }
@@ -848,6 +860,19 @@ onTap($("midBtn"), () => { expanded = !expanded; render(); });
 onTap($("undoBtn"), undo);
 onTap($("newBtn"), newGame);
 onTap($("endNew"), newGame);
+// A tap anywhere on the results screen starts a new game, except on its buttons (which do their
+// own thing) and except a slide, which scrolls the list of missed matches.
+let endShownAt = 0, endDown = null;
+$("endScreen").addEventListener("pointerdown", e => { endDown = { x: e.clientX, y: e.clientY }; });
+$("endScreen").addEventListener("pointercancel", () => { endDown = null; });
+$("endScreen").addEventListener("pointerup", e => {
+  const d = endDown; endDown = null;
+  if (!d || e.target.closest("button")) return;
+  if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) return;
+  if (Date.now() - endShownAt < 500) return;   // ignore a tap that was already under way
+  lastTouchTap = Date.now();                    // and the leftover click that follows it
+  newGame();
+});
 onTap($("endLook"), () => { $("endScreen").hidden = true; });
 onTap($("helpBtn"), () => { $("help").hidden = false; });
 onTap($("helpClose"), () => { $("help").hidden = true; });
