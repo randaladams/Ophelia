@@ -203,8 +203,13 @@ body {
 .solveskip { position: fixed; inset: 0; z-index: 30; }
 body.solving .card.rest { opacity: 1; }
 .solveghost { opacity: 1; z-index: 25; }
-.card.solvetarget { box-shadow: 0 0 0 4px var(--good); }
-.card.gone, .solveghost.gone { opacity: 0 !important; transform: scale(.6) !important; transition: opacity .2s ease-in, transform .2s ease-in !important; }
+.card.pairglow { box-shadow: 0 0 0 4px var(--good), 0 0 22px 6px rgba(116,211,148,.6) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .card.pairglow { animation: pairglow .52s ease-in-out; }
+  @keyframes pairglow { 50% { box-shadow: 0 0 0 7px var(--good), 0 0 34px 12px rgba(116,211,148,.75); } }
+  .stat.bump { animation: bump .35s ease-out; }
+  @keyframes bump { 40% { transform: scale(1.12); background: #2b5a43; } }
+}
 .ghost { position: fixed; z-index: 20; pointer-events: none; margin: 0; box-shadow: 0 14px 28px rgba(0,0,0,.5); opacity: .95; }
 .card.dim { opacity: .55; }
 .card.back { background: repeating-linear-gradient(45deg, var(--brass) 0 7px, #a77a22 7px 14px); border: 4px solid var(--card); }
@@ -522,7 +527,10 @@ function solveRest(done) {
   document.body.classList.add("solving");
   render();
   say("Here's how the rest would have paired up.", "ok");
-  const step = Math.max(260, Math.min(700, 6000 / pairs.length));   // the whole show takes about 6 seconds at most
+  // Each pair: the first card slides onto its match, both glow, then both fly to the Pile.
+  // The next pair starts while the last is still flying, so a long line doesn't drag on.
+  const MOVE = 520, GLOW = 520, FLY = 560;
+  const step = Math.max(700, Math.min(1600, 12000 / pairs.length));
   const timers = [], ghosts = [];
   let shownPile = pile;
   const cancel = () => {
@@ -539,27 +547,56 @@ function solveRest(done) {
   skip.addEventListener("pointerdown", e => { e.preventDefault(); lastTouchTap = Date.now(); finish(); });
   document.body.appendChild(skip);
   solving = { finish, cancel };
+  const clone = (el, r) => {
+    const g = el.cloneNode(true);
+    g.classList.remove("sel", "glow", "live", "rest", "solvetarget");
+    g.classList.add("ghost", "solveghost");
+    Object.assign(g.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+    g.style.setProperty("--h", r.height + "px");
+    document.body.appendChild(g); ghosts.push(g);
+    return g;
+  };
+  const later = (ms, fn) => timers.push(setTimeout(fn, ms));
   pairs.forEach(([a, b], n) => {
-    timers.push(setTimeout(() => {
+    later(n * step, () => {
       const A = document.querySelector(`#line .slot[data-i="${a}"] .card`);
       const B = document.querySelector(`#line .slot[data-i="${b}"] .card`);
       if (!A || !B) return;
       const ra = A.getBoundingClientRect(), rb = B.getBoundingClientRect();
-      const g = A.cloneNode(true);
-      g.classList.add("ghost", "solveghost");
-      Object.assign(g.style, { left: ra.left + "px", top: ra.top + "px", width: ra.width + "px", height: ra.height + "px",
-        transition: `transform ${step * 0.55}ms cubic-bezier(.4,.1,.3,1)` });
-      document.body.appendChild(g); ghosts.push(g);
+      // 1. The first card slides onto its match, landing a little offset so both stay visible.
+      const ga = clone(A, ra);
+      ga.style.zIndex = 27;
       A.style.visibility = "hidden";
-      B.classList.add("solvetarget");
-      requestAnimationFrame(() => { g.style.transform = `translate(${rb.left - ra.left}px, ${rb.top - ra.top}px)`; });
-      timers.push(setTimeout(() => {
-        g.classList.add("gone"); B.classList.add("gone");
-        shownPile += 2; $("pileCount").textContent = shownPile;
-      }, step * 0.6));
-    }, n * step));
+      const off = Math.round(rb.width * 0.18);
+      const onB = [rb.left - ra.left + off, rb.top - ra.top + off];
+      ga.style.transition = `transform ${MOVE}ms cubic-bezier(.4,.1,.3,1)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { ga.style.transform = `translate(${onB[0]}px, ${onB[1]}px)`; }));
+      // 2. Both glow together.
+      later(MOVE, () => {
+        const gb = clone(B, rb);
+        B.style.visibility = "hidden";
+        ga.classList.add("pairglow"); gb.classList.add("pairglow");
+        // 3. Both fly up to the Pile counter, shrinking as they go.
+        later(GLOW, () => {
+          const pr = $("pileCount").closest(".stat").getBoundingClientRect();
+          const px = pr.left + pr.width / 2, py = pr.top + pr.height / 2;
+          [[ga, ra, onB], [gb, rb, [0, 0]]].forEach(([g, r, from], k) => {
+            const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height / 2);
+            g.style.transition = `transform ${FLY}ms cubic-bezier(.5,0,.75,0) ${k * 70}ms, opacity ${FLY}ms ease-in ${k * 70}ms`;
+            g.style.transform = `translate(${dx}px, ${dy}px) scale(.25)`;
+            g.style.opacity = "0.15";
+          });
+          later(FLY + 70, () => {
+            ga.remove(); gb.remove();
+            shownPile += 2; $("pileCount").textContent = shownPile;
+            const stat = $("pileCount").closest(".stat");
+            stat.classList.remove("bump"); void stat.offsetWidth; stat.classList.add("bump");
+          });
+        });
+      });
+    });
   });
-  timers.push(setTimeout(finish, pairs.length * step + 500));
+  timers.push(setTimeout(finish, (pairs.length - 1) * step + MOVE + GLOW + FLY + 700));
 }
 function finishGame() {
   if (over || hand || deck.length) return;
@@ -730,6 +767,7 @@ function onCard(el, key) {
       ghost.classList.remove("sel", "glow", "flip", "shake", "target", "over");
       ghost.classList.add("ghost");
       Object.assign(ghost.style, { left: "0px", top: "0px", width: r.width + "px", height: r.height + "px" });
+      ghost.style.setProperty("--h", r.height + "px");
       document.body.appendChild(ghost);
       el.classList.add("lifted");
       targets.forEach(t => t.el.classList.add("target"));
