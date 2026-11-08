@@ -200,6 +200,11 @@ body {
 /* While dragging, every card you could drop on grows; the one you're nearest grows most. */
 .card.target { transform: scale(1.2); z-index: 3; box-shadow: 0 0 0 3px rgba(121,182,242,.55), 0 6px 14px rgba(0,0,0,.45); transition: transform .1s ease-out; }
 .card.target.over { transform: scale(1.45); z-index: 4; box-shadow: 0 0 0 5px var(--sel), 0 10px 22px rgba(0,0,0,.5); }
+.solveskip { position: fixed; inset: 0; z-index: 30; }
+body.solving .card.rest { opacity: 1; }
+.solveghost { opacity: 1; z-index: 25; }
+.card.solvetarget { box-shadow: 0 0 0 4px var(--good); }
+.card.gone, .solveghost.gone { opacity: 0 !important; transform: scale(.6) !important; transition: opacity .2s ease-in, transform .2s ease-in !important; }
 .ghost { position: fixed; z-index: 20; pointer-events: none; margin: 0; box-shadow: 0 14px 28px rgba(0,0,0,.5); opacity: .95; }
 .card.dim { opacity: .55; }
 .card.back { background: repeating-linear-gradient(45deg, var(--brass) 0 7px, #a77a22 7px 14px); border: 4px solid var(--card); }
@@ -333,7 +338,7 @@ body {
       <li>Tap ⚙ for Real deck (no alerts), the card count, and how the screen turns.</li>
       <li>When you drag a card, the card it matches grows. Letting go near it is enough. In Real deck mode, every card it could legally go on grows instead, so there's no hint.</li>
       <li>When the deck runs out, clear anything left at the ends, then tap Finish game.</li>
-      <li>Win by emptying the line once the deck runs out.</li>
+      <li>Win by emptying the line once the deck runs out. If cards are left, the game shows how they would have paired up (tap to skip).</li>
     </ul>
     <div class="row"><button class="btn primary" id="helpClose" type="button">Back to the game</button></div>
   </div>
@@ -410,6 +415,7 @@ function buzz() {
 }
 
 function newGame() {
+  if (solving) solving.cancel();
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
@@ -487,9 +493,73 @@ function checkEnd(prefix = "") {
 function endGame(res) {
   over = true; result = res; rec.g++; if (res === "win") rec.w++; saveRec();
   const n = line.length;
-  if (res === "win") say("The line is clear. You won!", "win");
-  else say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose");
-  showEnd();
+  if (res === "win") { say("The line is clear. You won!", "win"); showEnd(); return; }
+  say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose");
+  solveRest(showEnd);
+}
+
+// The ending of a lost game: the cards left in the line fly onto their partners, one pair at a
+// time, until the line is empty. It always works out: a match is made within a "family" of ranks
+// that add up to 13 (5s and 8s, 6s and 7s...), any two cards of one family match, and cards always
+// leave in twos within a family, so every family has an even number left. Only for show; the game
+// still counts as lost. A tap skips to the results.
+let solving = null;
+function solvePairs() {
+  const fam = c => Math.min(c.rank, 13 - c.rank);
+  const left = line.map((c, i) => i), pairs = [];
+  while (left.length > 1) {
+    const i = left.shift();
+    const k = left.findIndex(j => fam(line[j]) === fam(line[i]));
+    if (k < 0) break;  // can't happen, see above; stop rather than loop
+    pairs.push([i, left.splice(k, 1)[0]]);
+  }
+  return pairs;
+}
+function solveRest(done) {
+  const pairs = solvePairs();
+  if (!pairs.length || matchMedia("(prefers-reduced-motion: reduce)").matches) { done(); return; }
+  expanded = true; sel = []; glow.clear();
+  document.body.classList.add("solving");
+  render();
+  say("Here's how the rest would have paired up.", "ok");
+  const step = Math.max(260, Math.min(700, 6000 / pairs.length));   // the whole show takes about 6 seconds at most
+  const timers = [], ghosts = [];
+  let shownPile = pile;
+  const cancel = () => {
+    if (!solving) return false;
+    solving = null;
+    timers.forEach(clearTimeout); ghosts.forEach(g => g.remove()); skip.remove();
+    document.body.classList.remove("solving");
+    expanded = false;
+    return true;
+  };
+  const finish = () => { if (cancel()) { render(); done(); } };
+  const skip = document.createElement("div");
+  skip.className = "solveskip";
+  skip.addEventListener("pointerdown", e => { e.preventDefault(); lastTouchTap = Date.now(); finish(); });
+  document.body.appendChild(skip);
+  solving = { finish, cancel };
+  pairs.forEach(([a, b], n) => {
+    timers.push(setTimeout(() => {
+      const A = document.querySelector(`#line .slot[data-i="${a}"] .card`);
+      const B = document.querySelector(`#line .slot[data-i="${b}"] .card`);
+      if (!A || !B) return;
+      const ra = A.getBoundingClientRect(), rb = B.getBoundingClientRect();
+      const g = A.cloneNode(true);
+      g.classList.add("ghost", "solveghost");
+      Object.assign(g.style, { left: ra.left + "px", top: ra.top + "px", width: ra.width + "px", height: ra.height + "px",
+        transition: `transform ${step * 0.55}ms cubic-bezier(.4,.1,.3,1)` });
+      document.body.appendChild(g); ghosts.push(g);
+      A.style.visibility = "hidden";
+      B.classList.add("solvetarget");
+      requestAnimationFrame(() => { g.style.transform = `translate(${rb.left - ra.left}px, ${rb.top - ra.top}px)`; });
+      timers.push(setTimeout(() => {
+        g.classList.add("gone"); B.classList.add("gone");
+        shownPile += 2; $("pileCount").textContent = shownPile;
+      }, step * 0.6));
+    }, n * step));
+  });
+  timers.push(setTimeout(finish, pairs.length * step + 500));
 }
 function finishGame() {
   if (over || hand || deck.length) return;
@@ -833,7 +903,7 @@ function render() {
       }
       return;
     }
-    const s = document.createElement("div"); s.className = "slot";
+    const s = document.createElement("div"); s.className = "slot"; s.dataset.i = i;
     const isTop = i === 0, isBot = i === n - 1;
     const t = document.createElement("span"); t.className = "tag";
     t.textContent = n === 1 ? "Top & bottom" : isTop ? "Top" : isBot ? "Bottom" : "";
@@ -901,6 +971,7 @@ onTap($("setBtn"), () => { $("settings").hidden = false; });
 onTap($("setBack"), () => { $("settings").hidden = true; });
 backdropTap("settings");
 window.handleBack = () => {
+  if (solving) { solving.finish(); return true; }
   if (!$("settings").hidden) { $("settings").hidden = true; return true; }
   if (!$("help").hidden) { $("help").hidden = true; return true; }
   if (!$("endScreen").hidden) { $("endScreen").hidden = true; return true; }
