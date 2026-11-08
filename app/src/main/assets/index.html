@@ -205,9 +205,9 @@ body.solving .card.rest { opacity: 1; }
 .solveghost { opacity: 1; z-index: 25; }
 .card.pairglow { box-shadow: 0 0 0 4px var(--good), 0 0 22px 6px rgba(116,211,148,.6) !important; }
 @media (prefers-reduced-motion: no-preference) {
-  .card.pairglow { animation: pairglow .52s ease-in-out; }
+  .card.pairglow { animation: pairglow .26s ease-in-out; }
   @keyframes pairglow { 50% { box-shadow: 0 0 0 7px var(--good), 0 0 34px 12px rgba(116,211,148,.75); } }
-  .stat.bump { animation: bump .35s ease-out; }
+  .stat.bump { animation: bump .2s ease-out; }
   @keyframes bump { 40% { transform: scale(1.12); background: #2b5a43; } }
 }
 .ghost { position: fixed; z-index: 20; pointer-events: none; margin: 0; box-shadow: 0 14px 28px rgba(0,0,0,.5); opacity: .95; }
@@ -529,8 +529,8 @@ function solveRest(done) {
   say("Here's how the rest would have paired up.", "ok");
   // Each pair: the first card slides onto its match, both glow, then both fly to the Pile.
   // The next pair starts while the last is still flying, so a long line doesn't drag on.
-  const MOVE = 520, GLOW = 520, FLY = 560;
-  const step = Math.max(700, Math.min(1600, 12000 / pairs.length));
+  const MOVE = 260, GLOW = 260, FLY = 280;
+  const step = Math.max(350, Math.min(800, 6000 / pairs.length));
   const timers = [], ghosts = [];
   let shownPile = pile;
   const cancel = () => {
@@ -582,11 +582,11 @@ function solveRest(done) {
           const px = pr.left + pr.width / 2, py = pr.top + pr.height / 2;
           [[ga, ra, onB], [gb, rb, [0, 0]]].forEach(([g, r, from], k) => {
             const dx = px - (r.left + r.width / 2), dy = py - (r.top + r.height / 2);
-            g.style.transition = `transform ${FLY}ms cubic-bezier(.5,0,.75,0) ${k * 70}ms, opacity ${FLY}ms ease-in ${k * 70}ms`;
+            g.style.transition = `transform ${FLY}ms cubic-bezier(.5,0,.75,0) ${k * 35}ms, opacity ${FLY}ms ease-in ${k * 35}ms`;
             g.style.transform = `translate(${dx}px, ${dy}px) scale(.25)`;
             g.style.opacity = "0.15";
           });
-          later(FLY + 70, () => {
+          later(FLY + 35, () => {
             ga.remove(); gb.remove();
             shownPile += 2; $("pileCount").textContent = shownPile;
             const stat = $("pileCount").closest(".stat");
@@ -596,7 +596,7 @@ function solveRest(done) {
       });
     });
   });
-  timers.push(setTimeout(finish, (pairs.length - 1) * step + MOVE + GLOW + FLY + 700));
+  timers.push(setTimeout(finish, (pairs.length - 1) * step + MOVE + GLOW + FLY + 350));
 }
 function finishGame() {
   if (over || hand || deck.length) return;
