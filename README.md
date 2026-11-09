@@ -31,6 +31,20 @@ Every push to `main` builds the app on GitHub. This link always downloads the ne
 
 Open it on your Android phone or tablet, then open the downloaded file to install. Android will ask you to allow installing apps from your browser or file manager the first time.
 
+## Fire TV
+
+A separate Fire TV app (`com.adamselite.ophelia.tv`) plays the same game with the remote. It lives in the `tv` module, reads the game page from the phone app's folder, and adds `tv/src/main/assets/tv.js` for remote control. The phone app's code and build are unchanged by it.
+
+This link always downloads the newest Fire TV build:
+
+**https://github.com/randaladams/Ophelia/releases/latest/download/Ophelia-FireTV.apk**
+
+It runs on Fire TV devices with Fire OS 6 or newer (Android 7.1+), such as the Fire TV Stick 4K 1st Gen. Fire TV models that run Vega OS (Fire TV Stick 4K Select, and the 2026 Fire TV Stick 4K and HD) can't install Android apps.
+
+**Remote:** arrows move the white highlight, **OK** selects (on your card it lays it down; on a line card it picks it, then OK on your card pairs them), **Play/Pause** lays down your card, **Rewind** undoes, **Menu** shows the rules, **Back** closes a screen or unpicks a card.
+
+**Installing:** on the Fire TV, turn on Settings > My Fire TV > Developer options > Apps from Unknown Sources, install the free **Downloader** app from the Amazon Appstore, and open the link above (or `adamselite.com/tv`) in it.
+
 ## App details
 
 - Package name: `com.adamselite.ophelia`
@@ -73,4 +87,5 @@ The **sideload test key** (`app/sideload-test.p12`) is committed on purpose so e
 
 - `app/src/main/assets/index.html` holds the whole game: the rules, the table and the cards.
 - `app/src/main/java/com/adamselite/ophelia/MainActivity.java` shows the game full screen, handles Back, vibration and screen turning.
+- `tv/` is the Fire TV app: `TvActivity.java`, its manifest and launcher banner, and `tv.js` for remote control.
 - `gradle/libs.versions.toml` lists every plugin and library version in one place.

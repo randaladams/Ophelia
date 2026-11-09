@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ophelia"
 include(":app")
+include(":tv")   // Fire TV build: same game, remote-control play

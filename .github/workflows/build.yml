@@ -43,11 +43,13 @@ jobs:
           } >> "$GITHUB_ENV"
 
       # Any Gradle deprecation warning fails the build instead of scrolling past.
-      - name: Build the sideload APK
-        run: .github/scripts/gradle.sh assembleRelease --warning-mode=fail -Dorg.gradle.deprecation.trace=true
+      - name: Build the sideload APKs (phone and Fire TV)
+        run: .github/scripts/gradle.sh :app:assembleRelease :tv:assembleRelease --warning-mode=fail -Dorg.gradle.deprecation.trace=true
 
-      - name: Name the APK
-        run: cp app/build/outputs/apk/release/app-release.apk Ophelia.apk
+      - name: Name the APKs
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk Ophelia.apk
+          cp tv/build/outputs/apk/release/tv-release.apk Ophelia-FireTV.apk
 
       - name: Build the signed Play bundle
         if: env.PLAY_UPLOAD_KEYSTORE_BASE64 != ''
@@ -57,7 +59,7 @@ jobs:
           PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         run: |
           echo "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
-          PLAY_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.keystore" .github/scripts/gradle.sh bundleRelease -Psigning=play --warning-mode=fail
+          PLAY_UPLOAD_KEYSTORE_FILE="$RUNNER_TEMP/upload.keystore" .github/scripts/gradle.sh :app:bundleRelease -Psigning=play --warning-mode=fail
           cp app/build/outputs/bundle/release/app-release.aab Ophelia.aab
           rm -f "$RUNNER_TEMP/upload.keystore"
           # Show which key signed the bundle, to compare with the upload key in Play Console.
@@ -70,6 +72,12 @@ jobs:
         with:
           name: Ophelia-apk
           path: Ophelia.apk
+
+      - name: Keep the Fire TV APK with this run
+        uses: actions/upload-artifact@v7
+        with:
+          name: Ophelia-FireTV-apk
+          path: Ophelia-FireTV.apk
 
       - name: Keep the Play bundle with this run
         if: env.PLAY_UPLOAD_KEYSTORE_BASE64 != ''
@@ -86,10 +94,10 @@ jobs:
         # A rerun of the same build replaces the APK on its existing release instead of failing.
         run: |
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" Ophelia.apk --clobber
+            gh release upload "$TAG" Ophelia.apk Ophelia-FireTV.apk --clobber
           else
-            gh release create "$TAG" Ophelia.apk \
+            gh release create "$TAG" Ophelia.apk Ophelia-FireTV.apk \
               --title "Ophelia build ${{ github.run_number }}" \
-              --notes "Download Ophelia.apk and open it on your Android phone or tablet to install." \
+              --notes "Ophelia.apk is for Android phones and tablets. Ophelia-FireTV.apk is for Fire TV (Fire OS 6 and newer); see the README for how to install it." \
               --latest
           fi
