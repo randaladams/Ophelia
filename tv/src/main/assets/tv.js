@@ -131,16 +131,25 @@
     var list = candidates(), cur = doc.activeElement;
     if (list.indexOf(cur) < 0) { focusOn(defaultTarget()); return; }
     var a = rectOf(cur), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
-    var best = null, bestScore = Infinity;
-    list.forEach(function (el) {
-      if (el === cur) return;
-      var r = rectOf(el), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
-      var ahead = dir === "left" ? -dx : dir === "right" ? dx : dir === "up" ? -dy : dy;
-      var aside = dir === "left" || dir === "right" ? Math.abs(dy) : Math.abs(dx);
-      if (ahead <= 4) return;
-      var score = ahead + aside * 2.2;   // prefer things straight ahead over things off to the side
-      if (score < bestScore) { bestScore = score; best = el; }
-    });
+    // First look only at things really in that direction: within 45 degrees of the arrow.
+    // (Before, the Undo button, a little right of your card but mostly below it, could win a
+    // Right press over the line, depending on where the line's cards happened to sit.)
+    // Only if nothing is there, look at anything on that side.
+    function pick(cone) {
+      var best = null, bestScore = Infinity;
+      list.forEach(function (el) {
+        if (el === cur) return;
+        var r = rectOf(el), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
+        var ahead = dir === "left" ? -dx : dir === "right" ? dx : dir === "up" ? -dy : dy;
+        var aside = dir === "left" || dir === "right" ? Math.abs(dy) : Math.abs(dx);
+        if (ahead <= 4) return;
+        if (cone && aside > ahead) return;
+        var score = ahead + aside * 2.2;   // prefer things straight ahead over things off to the side
+        if (score < bestScore) { bestScore = score; best = el; }
+      });
+      return best;
+    }
+    var best = pick(true) || pick(false);
     if (best) focusOn(best);
   }
 
