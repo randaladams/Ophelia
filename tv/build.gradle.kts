@@ -26,8 +26,8 @@ android {
 
     sourceSets {
         getByName("main") {
-            assets.srcDir("../app/src/main/assets")
-            res.srcDir("../app/src/main/res")
+            assets.directories.add("../app/src/main/assets")
+            res.directories.add("../app/src/main/res")
         }
     }
 
