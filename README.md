@@ -13,7 +13,7 @@ A one-deck solitaire card game, as taught by Grandma.
 
 When a match is waiting, the phone buzzes twice and the cards glow green. The game plays sideways or upright.
 
-When a game is lost, the cards left in the line pair off one pair at a time until the line is empty: a card slides onto its match, both glow, then both fly up to the pile (tap to skip). This always works out: any two cards whose ranks are equal or add to 13 match, and cards always leave the line in such pairs, so the leftovers always pair off. Then the results screen lists any matches you missed along the way. Tap anywhere on it for a new game.
+When a game is lost, the cards left in the line pair off one pair at a time until the line is empty: a card slides onto its match, both glow, then both fly up to the pile (tap to skip). This always works out: any two cards whose ranks are equal or add to 13 match, and cards always leave the line in such pairs, so the leftovers always pair off. Then the results screen lists any matches you missed along the way. Tap anywhere on it for a new game. **Replay this game** deals the same cards in the same order, so you can try again for the matches you missed. A replay is practice and isn't added to your win/loss record.
 
 Under the line, a **card count** chart shows every card: still in the deck, in the line, in your hand, or on the pile, with pile and left counts for each suit and a count of what's left of each rank.
 

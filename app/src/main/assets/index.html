@@ -355,6 +355,7 @@ body.solving .card.rest { opacity: 1; }
     <p id="endText"></p>
     <div class="row">
       <button class="btn primary" id="endNew" type="button">New game</button>
+      <button class="btn" id="endReplay" type="button">Replay this game</button>
       <button class="btn" id="endLook" type="button">Look at the table</button>
     </div>
     <div class="review">
@@ -419,21 +420,34 @@ function buzz() {
   } catch (e) {}
 }
 
+// lastDeal keeps the shuffled deck of the current game, so "Replay this game" can deal it again.
+// A replay is practice: it isn't added to the win/loss record.
+let lastDeal = null, replaying = false;
 function newGame() {
-  if (solving) solving.cancel();
   deck = [];
   for (const [s, red, name] of SUITS) for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: s, red, name });
   for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+  lastDeal = JSON.stringify(deck);
+  deal(false);
+}
+function replayGame() {
+  if (!lastDeal) { newGame(); return; }
+  deck = JSON.parse(lastDeal);
+  deal(true);
+}
+function deal(isReplay) {
+  if (solving) solving.cancel();
+  replaying = isReplay;
   line = []; pile = 0; hand = null; sel = []; expanded = false; over = false; result = null; flipNext = false; hist = []; misses = []; glow.clear();
   $("endScreen").hidden = true;
-  draw("");
+  draw(replaying ? "Same cards, same order. " : "");
   render();
 }
 
 function snap() { hist.push(JSON.stringify({ deck, line, pile, hand, over, result, misses })); }
 function undo() {
   if (!hist.length) return;
-  if (over) { rec.g--; if (result === "win") rec.w--; saveRec(); }
+  if (over && !replaying) { rec.g--; if (result === "win") rec.w--; saveRec(); }
   const s = JSON.parse(hist.pop());
   deck = s.deck; line = s.line; pile = s.pile; hand = s.hand; over = s.over; result = s.result; misses = s.misses || [];
   sel = []; glow.clear(); alertDue = false;
@@ -496,7 +510,8 @@ function checkEnd(prefix = "") {
     : "The deck is empty, but a pair or 13 is still waiting at the ends. Clear it, or tap Finish game."), "ok");
 }
 function endGame(res) {
-  over = true; result = res; rec.g++; if (res === "win") rec.w++; saveRec();
+  over = true; result = res;
+  if (!replaying) { rec.g++; if (res === "win") rec.w++; saveRec(); }
   const n = line.length;
   if (res === "win") { say("The line is clear. You won!", "win"); showEnd(); return; }
   say(`The deck is out with ${n} card${n === 1 ? "" : "s"} left in the line.`, "lose");
@@ -609,9 +624,12 @@ function finishGame() {
 function showEnd() {
   const win = result === "win";
   $("endTitle").textContent = win ? "You won!" : "Not this time";
-  $("endText").textContent = win
+  const left = `${line.length} card${line.length === 1 ? " was" : "s were"} left in the line.`;
+  $("endText").textContent = replaying
+    ? (win ? "Every card made it to the pile." : left) + " This was a replay, so it isn't added to your record."
+    : win
     ? `Every card made it to the pile. That's ${rec.w} win${rec.w === 1 ? "" : "s"} in ${rec.g} game${rec.g === 1 ? "" : "s"}.`
-    : `${line.length} card${line.length === 1 ? " was" : "s were"} left in the line. You've won ${rec.w} of ${rec.g} games.`;
+    : `${left} You've won ${rec.w} of ${rec.g} games.`;
   const real = misses.filter(x => x.kind === "miss");
   $("reviewTitle").textContent = real.length
     ? `You missed ${real.length} match${real.length === 1 ? "" : "es"}`
@@ -968,6 +986,7 @@ onTap($("midBtn"), () => { expanded = !expanded; render(); });
 onTap($("undoBtn"), undo);
 onTap($("newBtn"), newGame);
 onTap($("endNew"), newGame);
+onTap($("endReplay"), replayGame);
 // A tap anywhere on the results screen starts a new game, except on its buttons (which do their
 // own thing) and except a slide, which scrolls the list of missed matches.
 let endShownAt = 0, endDown = null;
